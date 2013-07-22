@@ -5,8 +5,14 @@ title: libll++ Blog
 <h2>{{ page.title }}</h2>
 <p>List</p>
 <ul>
-{% for post in site.posts %}
-	<li>{{ post.date | date_to_string }} <a href="{{ site.baseurl }}{{ post.url }}">{{ post.title }}</a></li>
+[{% for post in site.posts %}
+    {
+        "title":"{{post.title}}",
+        "summary":"{{post.summary}}",
+        "url":"{{site.url}}{{post.url}}",
+        "date":"{{post.date|date_to_string}}"
+    }{% if forloop.last == false %},{% endif %}
 {% endfor %}
+]
 </ul>
 
