@@ -6,12 +6,7 @@ title: libll++ blog
 <p>List</p>
 <ul>
 {% for post in site.posts %}
-    {
-        "title":"{{post.title}}",
-        "summary":"{{post.summary}}",
-        "url":"{{site.url}}{{post.url}}",
-        "date":"{{post.date|date_to_string}}"
-    }
+<li>{{ post.date | date_to_string }} <a href="{{ site.baseurl }}{{ post.url }}">{{ post.title }}</a></li>
 {% endfor %}
 
 </ul>
