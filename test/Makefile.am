@@ -3,7 +3,7 @@ noinst_PROGRAMS = 	\
 
 member_SOURCES  =  member.cpp
 
-LDFLAGS  = -L../libll++ -lll++ 
-CXXFLAGS = -I.. -std=c++11
+LDFLAGS  = -L../libll++ -lll++ -Wall
+CXXFLAGS = -I.. -std=c++11 -O2
 
 

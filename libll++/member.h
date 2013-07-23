@@ -3,12 +3,36 @@
 
 namespace ll {
 
-template <typename T, typename R> R __typeof_member__(R T::*);
-template <typename T, typename R> T __typeof_member_class__(R T::*);
+/* typeof_member */
+template <typename _T>
+struct typeof_member;
 
-#define typeof_member(x) decltype(__typeof_member__(x))
-#define typeof_member_class(x) decltype(__typeof_member_class__(x))
-#define offsetof_member(x) reinterpret_cast<std::size_t>(&(((typeof_member_class(x)*)0)->*x))
+template <typename _T, typename _C>
+struct typeof_member<_T _C::*> {
+    typedef _T type;
+};
+
+/* classof_member */
+template <typename _T>
+struct containerof_member;
+
+template <typename _T, typename _C>
+struct containerof_member<_T _C::*> {
+    typedef _C type;
+};
+
+/* offsetof_member */
+template <typename _T, typename _C>
+constexpr std::size_t offsetof(_T _C::*member) {
+    static_assert(std::is_member_object_pointer<decltype(member)>::value, 
+                  "offsetof_member only use for member object pointer.");
+    return reinterpret_cast<std::size_t>(&(((_C*)0)->*member));
+};
+
+template <typename _T, typename _C>
+inline _C *container_of(_T *ptr, _T _C::*member) {
+    return reinterpret_cast<_C*>(reinterpret_cast<char*>(ptr) - offsetof(member));
+}
 
 #define MEMBER_CHECKER_DECL(class_name, member)                                                                                                \
 template <class T>                                                                                                                             \
@@ -97,8 +121,11 @@ struct class_name {                                                             
             !has_enum::value;                                                                                                                  \
     };                                                                                                                                         \
                                                                                                                                                \
+    template <typename A>                                                                                                                      \
+    struct has_signature;                                                                                                                      \
+                                                                                                                                               \
     template <typename R, typename ...Args>                                                                                                    \
-    struct has_sig_function {                                                                                                                  \
+    struct has_signature<R(Args...)> {                                                                                                         \
         template<typename A, A>                                                                                                                \
         struct sig_check : std::true_type {};                                                                                                  \
                                                                                                                                                \
