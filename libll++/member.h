@@ -29,11 +29,13 @@ constexpr std::size_t offsetof(_T _C::*member) {
     return reinterpret_cast<std::size_t>(&(((_C*)0)->*member));
 };
 
+/* container_of */
 template <typename _T, typename _C>
 inline _C *container_of(_T *ptr, _T _C::*member) {
     return reinterpret_cast<_C*>(reinterpret_cast<char*>(ptr) - offsetof(member));
 }
 
+/* member check */
 #define MEMBER_CHECKER_DECL(class_name, member)                                                                                                \
 template <class T>                                                                                                                             \
 struct class_name {                                                                                                                            \

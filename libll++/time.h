@@ -97,6 +97,22 @@ public:
 
 };
 
+class time_trace : public time {
+public:
+    time_trace() : time(now()) {}
+
+    timeval check() {
+        timeval n = now();
+        timeval v = _value;
+        _value = n;
+        return n - v;
+    }
+
+    void reset() {
+        _value = now();
+    }
+};
+
 };
 
 #endif
