@@ -1,8 +1,7 @@
 #ifndef __LIBLLPP_LIST_H__
 #define __LIBLLPP_LIST_H__
 
-#include <libll/ll.h>
-#include "types.h"
+#include "member.h"
 
 namespace ll {
 
@@ -19,7 +18,7 @@ struct list_type {
     };
 };
 
-template <typename T, typename TEntry, TEntry T::*__field, int __type = TEntry::type> 
+template <typename _T, typename _Entry, _Entry _T::*__field, int __type = _Entry::type> 
 struct list {
     static_assert(__type >= 0 && __type < list_type::unknown,
                   "unknown list type.");
@@ -33,11 +32,11 @@ struct list_entry {
     void **_prev;
 };
 
-template <typename T, typename TEntry, TEntry T::*__field> 
-struct list <T, TEntry, __field, list_type::list> {
+template <typename _T, typename _Entry, _Entry _T::*__field> 
+struct list <_T, _Entry, __field, list_type::list> {
 private:
-    typedef T type;
-    typedef TEntry entry_type;
+    typedef _T type;
+    typedef _Entry entry_type;
 
     type *_first;
     
@@ -71,7 +70,7 @@ public:
         }
 
         bool operator==(const iterator &other) const {
-            return LL_EQUAL(_ptr, other._ptr);
+            return _ptr == other._ptr;
         }
 
         bool operator!=(const iterator &other) const {
@@ -127,8 +126,12 @@ public:
         return __LIST_OBJECT__(__LIST_ENTRY__(elm)._next);
     }
 
-    int empty() {
+    bool empty() {
         return !_first;
+    }
+
+    void truncate() {
+        _first = NULL;
     }
 
     type *push_front(type *elm) {
@@ -193,12 +196,12 @@ struct clist_entry {
     }
 };
 
-#define __CLIST_OBJECT__(entry) ((type*)((char *)entry - offsetof_member(__field)))
-template <typename T, typename TEntry, TEntry T::*__field> 
-struct list <T, TEntry, __field, list_type::clist>: protected clist_entry {
+#define __CLIST_OBJECT__(entry) ll::container_of(entry, __field)
+template <typename _T, typename _Entry, _Entry _T::*__field> 
+struct list <_T, _Entry, __field, list_type::clist>: protected clist_entry {
 public:
-    typedef T type;
-    typedef TEntry entry_type;
+    typedef _T type;
+    typedef _Entry entry_type;
 
     class iterator {
     private:
@@ -240,7 +243,7 @@ public:
         }
 
         bool operator==(const iterator &other) const {
-            return LL_EQUAL(_entry, other._entry);
+            return _entry == other._entry;
         }
 
         bool operator!=(const iterator &other) const {
@@ -271,6 +274,11 @@ public:
         return elm;
     }
 
+    void truncate() {
+        _next = this;
+        _prev = this;
+    }
+
     type *push_front(type *elm) {
         register entry_type *entry = &(elm->*__field);
         entry->insert_back(this);
@@ -285,7 +293,7 @@ public:
 
     type *pop_front() {
         register entry_type *entry = _next;
-        if (LL_EQUAL(entry, this)) {
+        if (entry == this) {
             return NULL;
         }
         else {
@@ -296,7 +304,7 @@ public:
 
     type *pop_back() {
         register entry_type *entry = _prev;
-        if (LL_EQUAL(entry, this)) {
+        if (entry == this) {
             return NULL;
         }
         else {
@@ -306,23 +314,23 @@ public:
     }
 
     type *first() {
-        return LL_EQUAL(_next, this) ? NULL : __CLIST_OBJECT__(_next);
+        return _next == this ? NULL : __CLIST_OBJECT__(_next);
     }
 
     type *last() {
-        return LL_EQUAL(_prev, this) ? NULL : __CLIST_OBJECT__(_prev);
+        return _prev == this ? NULL : __CLIST_OBJECT__(_prev);
     }
 
-    T *front() {
-        return LL_EQUAL(_next, this) ? NULL : __CLIST_OBJECT__(_next);
+    type *front() {
+        return _next == this ? NULL : __CLIST_OBJECT__(_next);
     }
 
-    T *back() {
-        return LL_EQUAL(_prev, this) ? NULL : __CLIST_OBJECT__(_prev);
+    type *back() {
+        return _prev == this ? NULL : __CLIST_OBJECT__(_prev);
     }
 
-    int empty() {
-        return LL_EQUAL(_prev, _next);
+    bool empty() {
+        return _prev == _next;
     }
 
     iterator begin() {
@@ -349,11 +357,11 @@ struct slist_entry {
     void *_next;
 };
 
-template <typename T, typename TEntry, TEntry T::*__field> 
-struct list <T, TEntry, __field, list_type::slist> {
+template <typename _T, typename _Entry, _Entry _T::*__field> 
+struct list <_T, _Entry, __field, list_type::slist> {
 private:
-    typedef T type;
-    typedef TEntry entry_type;
+    typedef _T type;
+    typedef _Entry entry_type;
     type *_first;
 
 public:
@@ -386,7 +394,7 @@ public:
         }
 
         bool operator==(const iterator &other) const {
-            return LL_EQUAL(_ptr, other._ptr);
+            return _ptr == other._ptr;
         }
 
         bool operator!=(const iterator &other) const {
@@ -408,6 +416,10 @@ public:
 
     bool empty() {
         return !_first;
+    }
+
+    void truncate() {
+        _first = NULL;
     }
 
     type *first() {
@@ -450,21 +462,24 @@ public:
     }
 
     type *remove(type *elm) {
-        if (LL_EQUAL(_first, elm)) {
+        if (_first == elm) {
             return pop_front();
         }
         else {
-            type *curelm = first;
-            register entry_type &entry;
-            while (1) {
-                entry = __LIST_ENTRY__(curelm);
-                if (LL_EQUAL(entry._next, elm)) {
+            type *curelm = _first;
+            register entry_type *entry;
+            while (curelm) {
+                entry = &__LIST_ENTRY__(curelm);
+                if (entry->_next == elm) {
                     break;
                 }
-                curelm = __LIST_OBJECT__(entry._next);
+                curelm = __LIST_OBJECT__(entry->_next);
             }
-            entry._next = __LIST_ENTRY__(entry._next)._next;
-            return elm;
+            if (curelm) {
+                entry->_next = __LIST_ENTRY__(entry->_next)._next;
+                return elm;
+            }
+            return NULL;
         }
     }
 
@@ -492,11 +507,11 @@ struct stlist_entry {
     void *_next;
 };
 
-template <typename T, typename TEntry, TEntry T::*__field> 
-struct list <T, TEntry, __field, list_type::stlist> {
+template <typename _T, typename _Entry, _Entry _T::*__field> 
+struct list <_T, _Entry, __field, list_type::stlist> {
 private:
-    typedef T type;
-    typedef TEntry entry_type;
+    typedef _T type;
+    typedef _Entry entry_type;
 
     type *_first;
     type **_last;
@@ -531,7 +546,7 @@ public:
         }
 
         bool operator==(const iterator &other) const {
-            return LL_EQUAL(_ptr, other._ptr);
+            return _ptr == other._ptr;
         }
 
         bool operator!=(const iterator &other) const {
@@ -558,6 +573,11 @@ public:
         return __LIST_OBJECT__(__LIST_ENTRY__(elm)._next);
     }
 
+    void truncate() {
+        _first = NULL;
+        _last = &_first;
+    }
+
     type *push_front(type *elm) {
         register entry_type &entry = __LIST_ENTRY__(elm);
 
@@ -573,8 +593,18 @@ public:
 
         entry._next = NULL;
         *_last = elm;
-        _last = &entry._next;
+        _last = reinterpret_cast<type**>(&entry._next);
 
+        return elm;
+    }
+
+    type* pop_front() {
+        type* elm = _first;
+        if (elm) {
+            if ((_first = __LIST_OBJECT__(__LIST_ENTRY__(elm)._next)) == NULL) {
+                _last = &_first;
+            }
+        }
         return elm;
     }
 
@@ -603,23 +633,26 @@ public:
     }
 
     type *remove(type *elm) {
-        if (LL_EQUAL(_first, elm)) {
-            return pop_front(elm);
+        if (_first == elm) {
+            return pop_front();
         } 
         else {
             type *curelm = _first;
-            register entry_type &entry;
-            while (1) {
-                entry = __LIST_ENTRY__(curelm);
-                if (LL_EQUAL(entry._next, elm)) {
+            register entry_type *entry;
+            while (curelm) {
+                entry = &__LIST_ENTRY__(curelm);
+                if (entry->_next == elm) {
                     break;
                 }
-                curelm = entry._next;
+                curelm = __LIST_OBJECT__(entry->_next);
             }
-            if (LL_ISNULL(entry._next = __LIST_ENTRY__(entry._next)._next)) {
-                _last = &entry._next;
+            if (curelm) {
+                if (!(entry->_next = __LIST_ENTRY__(entry->_next)._next)) {
+                    _last = reinterpret_cast<type**>(&entry->_next);
+                }
+                return elm;
             }
-            return elm;
+            return NULL;
         }
     }
 
@@ -640,7 +673,7 @@ public:
     }
 };
 
-#define list(T, entry) list<T, decltype(T::entry), &T::entry>
+#define list(_T, entry) ll::list<_T, decltype(_T::entry), &_T::entry>
 
 };
 #endif
