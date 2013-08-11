@@ -1,7 +1,9 @@
 lib_LTLIBRARIES = libll++.la
 
 libll___la_SOURCES = 		\
-	ll.cpp
+	etc.cpp			\
+	bitorder.cpp		\
+	page.cpp
 
-libll___CXXFLAGS = -std=c++11 -Wall
+CXXFLAGS = -std=c++11 -Wall -O2
 

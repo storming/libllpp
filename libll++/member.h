@@ -1,38 +1,35 @@
 #ifndef __LIBLLPP_MEMBER_H__
 #define __LIBLLPP_MEMBER_H__
 
+#include <type_traits>
+
 namespace ll {
 
+
 /* typeof_member */
-template <typename _T>
-struct typeof_member;
-
 template <typename _T, typename _C>
-struct typeof_member<_T _C::*> {
-    typedef _T type;
-};
+_T typeof_member_helper(_T _C::*member);
+#define typeof_member(x) decltype(ll::typeof_member_helper(x))
 
-/* classof_member */
-template <typename _T>
-struct containerof_member;
 
+/* typeof_container */
 template <typename _T, typename _C>
-struct containerof_member<_T _C::*> {
-    typedef _C type;
-};
+_C typeof_container_helper(_T _C::*member);
+#define typeof_container(x) decltype(ll::typeof_container_helper(x))
+
 
 /* offsetof_member */
 template <typename _T, typename _C>
-constexpr std::size_t offsetof(_T _C::*member) {
+constexpr unsigned offsetof_member(_T _C::*member) {
     static_assert(std::is_member_object_pointer<decltype(member)>::value, 
                   "offsetof_member only use for member object pointer.");
-    return reinterpret_cast<std::size_t>(&(((_C*)0)->*member));
+    return reinterpret_cast<unsigned>(&(((_C*)0)->*member));
 };
 
 /* container_of */
 template <typename _T, typename _C>
-inline _C *container_of(_T *ptr, _T _C::*member) {
-    return reinterpret_cast<_C*>(reinterpret_cast<char*>(ptr) - offsetof(member));
+inline _C *containerof_member(_T *ptr, _T _C::*member) {
+    return reinterpret_cast<_C*>(reinterpret_cast<char*>(ptr) - offsetof_member(member));
 }
 
 /* member check */

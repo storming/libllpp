@@ -9,12 +9,14 @@ struct A {
     }
 };
 
+struct B : A {
+};
 MEMBER_CHECKER_DECL(check_foo, foo);
 
 int main() 
 {
-    std::cout << ll::offsetof(&A::a) << " "
-              << ll::offsetof(&A::b) << " "
+    std::cout << ll::offsetof_member(&A::a) << " "
+              << ll::offsetof_member(&A::b) << " "
               //<< ll::offsetof_member(&A::foo) << " "
               << std::endl;
 
@@ -24,5 +26,8 @@ int main()
     std::cout << check_foo<A>::has_function::value << std::endl;
     std::cout << check_foo<A>::has_signature<int()>::value << std::endl;
     std::cout << check_foo<A>::has_signature<int(int)>::value << std::endl;
+    std::cout<<std::is_same<int, typeof_member(&A::a)>::value << std::endl;
+    std::cout<<std::is_same<A, typeof_container(&B::a)>::value << std::endl;
+    std::cout<<std::is_same<B, typeof_container(&B::a)>::value << std::endl;
 	return 0;
 }

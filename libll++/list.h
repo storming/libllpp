@@ -45,7 +45,7 @@ public:
     private:
         type *_ptr;
     public:
-        iterator(type *object = NULL) : _ptr(object) {}
+        iterator(type *object = nullptr) : _ptr(object) {}
         type& operator*() {
             return *_ptr;
         }
@@ -78,13 +78,13 @@ public:
         }
     };
 public:
-    list() : _first(NULL) {}
+    list() : _first(nullptr) {}
 
     static type *insert_back(type *listelm, type *elm) {
         register entry_type &listed = __LIST_ENTRY__(listelm);
         register entry_type &entry = __LIST_ENTRY__(elm);
 
-        if ((entry._next = listed._next) != NULL) {
+        if ((entry._next = listed._next) != nullptr) {
             __LIST_ENTRY__(listed._next)._prev = &entry._next;
         }
         listed._next = elm;
@@ -107,7 +107,7 @@ public:
     static type *remove(type *elm) {
         register entry_type &entry = __LIST_ENTRY__(elm);
 
-        if (entry._next != NULL) {
+        if (entry._next != nullptr) {
             __LIST_ENTRY__(entry._next)._prev = entry._prev;
         }
         *entry._prev = entry._next;
@@ -131,12 +131,12 @@ public:
     }
 
     void truncate() {
-        _first = NULL;
+        _first = nullptr;
     }
 
     type *push_front(type *elm) {
         register entry_type &entry = __LIST_ENTRY__(elm);
-        if ((entry._next = _first) != NULL) {
+        if ((entry._next = _first) != nullptr) {
             __LIST_ENTRY__(_first)._prev = &entry._next;
         }
         _first = elm;
@@ -146,7 +146,7 @@ public:
 
     type *pop_front() {
         if (!_first) {
-            return NULL;
+            return nullptr;
         }
         return remove(_first);
     }
@@ -160,11 +160,11 @@ public:
     }
 
     iterator end() {
-        return iterator(NULL);
+        return iterator(nullptr);
     }
 
     const iterator end() const {
-        return iterator(NULL);
+        return iterator(nullptr);
     }
 };
 
@@ -196,7 +196,7 @@ struct clist_entry {
     }
 };
 
-#define __CLIST_OBJECT__(entry) ll::container_of(entry, __field)
+#define __CLIST_OBJECT__(entry) ll::containerof_member(entry, __field)
 template <typename _T, typename _Entry, _Entry _T::*__field> 
 struct list <_T, _Entry, __field, list_type::clist>: protected clist_entry {
 public:
@@ -294,7 +294,7 @@ public:
     type *pop_front() {
         register entry_type *entry = _next;
         if (entry == this) {
-            return NULL;
+            return nullptr;
         }
         else {
             entry->remove();
@@ -305,7 +305,7 @@ public:
     type *pop_back() {
         register entry_type *entry = _prev;
         if (entry == this) {
-            return NULL;
+            return nullptr;
         }
         else {
             entry->remove();
@@ -314,19 +314,19 @@ public:
     }
 
     type *first() {
-        return _next == this ? NULL : __CLIST_OBJECT__(_next);
+        return _next == this ? nullptr : __CLIST_OBJECT__(_next);
     }
 
     type *last() {
-        return _prev == this ? NULL : __CLIST_OBJECT__(_prev);
+        return _prev == this ? nullptr : __CLIST_OBJECT__(_prev);
     }
 
     type *front() {
-        return _next == this ? NULL : __CLIST_OBJECT__(_next);
+        return _next == this ? nullptr : __CLIST_OBJECT__(_next);
     }
 
     type *back() {
-        return _prev == this ? NULL : __CLIST_OBJECT__(_prev);
+        return _prev == this ? nullptr : __CLIST_OBJECT__(_prev);
     }
 
     bool empty() {
@@ -403,7 +403,7 @@ public:
     };
 
 public:
-    list() : _first(NULL) {}
+    list() : _first(nullptr) {}
 
     static type *insert_back(type *listelm, type *elm) {
         register entry_type &listed = __LIST_ENTRY__(listelm);
@@ -419,7 +419,7 @@ public:
     }
 
     void truncate() {
-        _first = NULL;
+        _first = nullptr;
     }
 
     type *first() {
@@ -479,7 +479,7 @@ public:
                 entry->_next = __LIST_ENTRY__(entry->_next)._next;
                 return elm;
             }
-            return NULL;
+            return nullptr;
         }
     }
 
@@ -492,11 +492,11 @@ public:
     }
 
     iterator end() {
-        return iterator(NULL);
+        return iterator(nullptr);
     }
 
     const iterator end() const {
-        return iterator(NULL);
+        return iterator(nullptr);
     }
 };
 
@@ -555,7 +555,7 @@ public:
     };
 
 public:
-    list() : _first(NULL), _last(&_first) {}
+    list() : _first(nullptr), _last(&_first) {}
 
     bool empty() {
         return !_first;
@@ -574,14 +574,14 @@ public:
     }
 
     void truncate() {
-        _first = NULL;
+        _first = nullptr;
         _last = &_first;
     }
 
     type *push_front(type *elm) {
         register entry_type &entry = __LIST_ENTRY__(elm);
 
-        if ((entry._next = _first) == NULL) {
+        if ((entry._next = _first) == nullptr) {
             _last = reinterpret_cast<type**>(&entry._next);
         }
         _first = elm;
@@ -591,7 +591,7 @@ public:
     type *push_back(type *elm) {
         register entry_type &entry = __LIST_ENTRY__(elm);
 
-        entry._next = NULL;
+        entry._next = nullptr;
         *_last = elm;
         _last = reinterpret_cast<type**>(&entry._next);
 
@@ -601,7 +601,7 @@ public:
     type* pop_front() {
         type* elm = _first;
         if (elm) {
-            if ((_first = __LIST_OBJECT__(__LIST_ENTRY__(elm)._next)) == NULL) {
+            if ((_first = __LIST_OBJECT__(__LIST_ENTRY__(elm)._next)) == nullptr) {
                 _last = &_first;
             }
         }
@@ -612,7 +612,7 @@ public:
         register entry_type &listed = __LIST_ENTRY__(listelm);
         register entry_type &entry = __LIST_ENTRY__(elm);
 
-        if ((entry._next = listed._next) == NULL) {
+        if ((entry._next = listed._next) == nullptr) {
             _last = &entry._next;
         }
         listed._next = elm;
@@ -625,7 +625,7 @@ public:
         } 
         else {
             register entry_type &entry = __LIST_ENTRY__(prev);
-            if (LL_ISNULL(entry._next = __LIST_ENTRY__(entry._next)._next)) {
+            if (LL_ISnullptr(entry._next = __LIST_ENTRY__(entry._next)._next)) {
                 _last = &entry._next;
             }
             return elm;
@@ -652,7 +652,7 @@ public:
                 }
                 return elm;
             }
-            return NULL;
+            return nullptr;
         }
     }
 
@@ -665,16 +665,16 @@ public:
     }
 
     iterator end() {
-        return iterator(NULL);
+        return iterator(nullptr);
     }
 
     const iterator end() const {
-        return iterator(NULL);
+        return iterator(nullptr);
     }
 };
 
-#define list(_T, entry) ll::list<_T, decltype(_T::entry), &_T::entry>
-
+#define list(_T, entry) ll::list<typeof_container(&_T::entry), typeof_member(&_T::entry), &_T::entry>
+//#define list(_T, entry) ll::list<_T, decltype(_T::entry), &_T::entry>
 };
 #endif
 
