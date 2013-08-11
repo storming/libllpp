@@ -4,7 +4,7 @@
 #include <tuple>
 #include <type_traits>
 
-#define FRIEND_TUPLE_APPLY()           \
+#define LL_FRIEND_TUPLE_APPLY()        \
     friend class ll:tuple_apply;       \
     friend class ll:tuple_apply::back; \
     friend class ll:tuple_apply::front
@@ -98,7 +98,7 @@ namespace ll {
             }
         };
 
-        template<bool __back = true, typename _F, typename _T, typename ..._Args>
+        template<bool __back = false, typename _F, typename _T, typename ..._Args>
         static inline auto apply(_F && f, _T && t, _Args&&...args) -> decltype(
             std::conditional<__back, back, front>::type::apply(
                 std::forward<_F>(f), 
