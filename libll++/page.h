@@ -48,7 +48,7 @@ private:
         char *_firstp;
         char *_endp;
     };
-    typedef list(segment, _entry) segmentlist_t;
+    typedef ll_list(segment, _entry) segmentlist_t;
 
     struct page_node {
         list_entry _entry;
@@ -66,13 +66,13 @@ private:
         };
     };
 
-    typedef list(page_node, _entry) freelist_t;
+    typedef ll_list(page_node, _entry) freelist_t;
 
     freelist_t _freetab[max_order];
     segment *_iseg;
     segment *_cseg;
-    list(page, sentry) _pages;
-    list(area, _entry) _areas;
+    ll_list(page, sentry) _pages;
+    ll_list(area, _entry) _areas;
     segmentlist_t _segments;
 
     segment *segment_create(segment *seg, unsigned size);

@@ -20,6 +20,7 @@ private:
 public:
     typedef _F functor;
     explicit closure(_F &f, _Params&&...params) : _f(f), _params(std::forward<_Params>(params)...) {}
+    explicit closure(_F *f, _Params&&...params) : _f(*f), _params(std::forward<_Params>(params)...) {}
 
     template <bool __apply_back = false, typename ..._Args>
     auto operator ()(_Args&&...args) -> decltype(tuple_apply::apply<__apply_back>(_f, _params, std::forward<_Args>(args)...)) {
@@ -38,18 +39,20 @@ public:
     typedef _R (_T::*member)(_MemberArgs...);
 
     struct functor {
-        functor(_T &obj, member f): _obj(obj), _f(f){}
+        functor(_T *obj, member f): _obj(obj), _f(f) {}
         member _f;
-        _T &_obj;
-        _R operator()(_MemberArgs&&...args) {
-            return (_obj.*_f)(std::forward<_MemberArgs>(args)...);
+        _T *_obj;
+        template <typename ..._Args>
+        _R operator()(_Args&&...args) {
+            (_obj->*_f)(std::forward<_Args>(args)...);
         }
     };
 private:
     functor _f;
     std::tuple<_Params...> _params;
 public:
-    explicit closure(_T &obj, member f, _Params&&...params) : _f(obj, f), _params(std::forward<_Params>(params)...) {}
+    explicit closure(_T &obj, member f, _Params&&...params) : _f(&obj, f), _params(std::forward<_Params>(params)...) {}
+    explicit closure(_T *obj, member f, _Params&&...params) : _f(obj, f), _params(std::forward<_Params>(params)...) {}
 
     template <bool __apply_back = false, typename ..._Args>
     auto operator ()(_Args&&...args) -> decltype(tuple_apply::apply<__apply_back>(_f, _params, std::forward<_Args>(args)...)) {

@@ -220,7 +220,7 @@ public:
             return __CLIST_OBJECT__(_entry);
         }
 
-        iterator& operator++() {
+        const iterator& operator++() {
             _entry = _entry->_next;
             return *this;
         }
@@ -673,8 +673,7 @@ public:
     }
 };
 
-#define list(_T, entry) ll::list<typeof_container(&_T::entry), typeof_member(&_T::entry), &_T::entry>
-//#define list(_T, entry) ll::list<_T, decltype(_T::entry), &_T::entry>
+#define ll_list(_T, entry) ll::list<typeof_container(&_T::entry), typeof_member(&_T::entry), &_T::entry>
 };
 #endif
 

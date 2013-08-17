@@ -29,7 +29,7 @@ void test_list()
 {
     cout << "== test list ==" << endl;
     cout << "push front: ";
-    list(A, list_entry) list;
+    ll_list(A, list_entry) list;
     for (int i = 0; i < ELEMS; i++) {
         a[i] = list.push_front(new A(i));
     }
@@ -49,7 +49,7 @@ void test_slist()
 {
     cout << "== test slist ==" << endl;
     cout << "push front: ";
-    list(A, slist_entry) list;
+    ll_list(A, slist_entry) list;
     for (int i = 0; i < ELEMS; i++) {
         a[i] = list.push_front(new A(i));
     }
@@ -69,7 +69,7 @@ void test_stlist()
 {
     cout << "== test stlist ==" << endl;
     cout << "push front: ";
-    list(A, stlist_entry) list;
+    ll_list(A, stlist_entry) list;
     for (int i = 0; i < ELEMS; i++) {
         a[i] = list.push_front(new A(i));
     }
@@ -95,7 +95,7 @@ void test_clist()
 {
     cout << "== test clist ==" << endl;
     cout << "push front: ";
-    list(A, clist_entry) list;
+    ll_list(A, clist_entry) list;
     for (int i = 0; i < ELEMS; i++) {
         a[i] = list.push_front(new A(i));
     }
