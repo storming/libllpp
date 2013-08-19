@@ -6,21 +6,30 @@
 
 namespace ll {
 
-template <typename signature>
+template <typename signature, bool __once = false>
 class signal;
 
-template <typename _R, typename ..._Args>
-class signal<_R(_Args...)> {
+template <bool __once, typename ..._Args>
+class signal<int(_Args...), __once> {
 public:
     class slot {
-        template <typename> friend class signal;
+        template <typename, bool> friend class signal;
     protected:
         clist_entry _entry;
-        _R (*_proxy)(slot*, _Args...);
+        int (*_callback)(slot*, _Args...);
 
-        slot(_R (*proxy)(slot*, _Args...)) : _proxy(proxy) {}
-        _R proxy_apply(_Args&&...args) {
-            return _proxy(this, std::forward<_Args>(args)...);
+        slot(int (*callback)(slot*, _Args...)) : _entry(nullptr), _callback(callback) {}
+        int operator()(_Args&&...args) {
+            return _callback(this, std::forward<_Args>(args)...);
+        }
+    public:
+        void disconnect() {
+            _entry.remove();
+            _entry._next = nullptr;
+        }
+
+        bool connected() {
+            return _entry._next != nullptr;
         }
     };
 
@@ -32,7 +41,7 @@ public:
     private:
         typedef functor<_F, _Params...> self_t;
         typedef closure<_F, _Params...> closure_t;
-        static _R proxy(slot *s, _Args&&...args) {
+        static int proxy(slot *s, _Args&&...args) {
             return static_cast<self_t*>(s)->apply(std::forward<_Args>(args)...);
         }
     public:
@@ -44,15 +53,15 @@ public:
     class member;
 
     template <typename _T, typename ..._MemberArgs, typename ..._Params>
-    class member<_R (_T::*)(_MemberArgs...), _Params...> : 
+    class member<int (_T::*)(_MemberArgs...), _Params...> : 
             public slot, 
-            public closure<_R (_T::*)(_MemberArgs...), _Params...> {
+            public closure<int (_T::*)(_MemberArgs...), _Params...> {
     private:
-        typedef member<_R (_T::*)(_MemberArgs...), _Params...> self_t;
-        typedef closure<_R (_T::*)(_MemberArgs...), _Params...> closure_t;
-        typedef _R (_T::*member_t)(_MemberArgs...);
+        typedef member<int (_T::*)(_MemberArgs...), _Params...> self_t;
+        typedef closure<int (_T::*)(_MemberArgs...), _Params...> closure_t;
+        typedef int (_T::*member_t)(_MemberArgs...);
 
-        static _R proxy(slot *s, _Args&&...args) {
+        static int proxy(slot *s, _Args&&...args) {
             return static_cast<self_t*>(s)->apply(std::forward<_Args>(args)...);
         }
     public:
@@ -64,19 +73,36 @@ private:
     ll_list(slot, _entry) _list;
 
 public:
-    bool connect(slot &s) {
+    void connect(slot &s) {
         _list.push_back(&s);
     }
 
-    bool connect(slot *s) {
+    void connect(slot *s) {
         _list.push_back(s);
     }
 
-    _R emit(_Args&&...args) {
-        for (auto it = _list.begin(); it != _list.end(); ++it) {
-            (*it).proxy_apply(std::forward<_Args>(args)...);
+    int emit(_Args&&...args) {
+        int n;
+        auto end = _list.end();
+        for (auto it = _list.begin(); it != end; ++it) {
+            if ((n = (*it)(std::forward<_Args>(args)...)) < 0) {
+                return n;
+            }
         }
+        return 0;
     }
+
+    int remit(_Args&&...args) {
+        int n;
+        auto end = _list.rend();
+        for (auto it = _list.rbegin(); it != end; --it) {
+            if ((n = (*it)(std::forward<_Args>(args)...)) < 0) {
+                return n;
+            }
+        }
+        return 0;
+    }
+
 };
 
 };

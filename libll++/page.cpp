@@ -1,10 +1,9 @@
 #include <sys/mman.h>
 #include <unistd.h>
-#include <stdio.h>
 
 #include "page.h"
 #include "etc.h"
-
+#include "module.h"
 
 namespace ll {
 
@@ -271,6 +270,13 @@ void page_allocator::free(page *pg)
     page_free(pg);
 }
 
+int page_allocator::module_init()
+{
+    _global = this;
+    return 0;
+}
+
+ll_module(page_allocator);
 
 }; // namespace ll end
 

@@ -1,20 +1,38 @@
+#include <type_traits>
 #include <iostream>
 using std::cout;
 using std::endl;
 
 #include "libll++/slotsig.h"
 #include "libll++/time.h"
+#include "libll++/module.h"
 
+struct static_foo {
+    static_foo() {
+        cout << "static_foo111" << endl;
+    }
+    static_foo(bool b) {
+        cout << "static_foo" << endl;
+        cout << b << endl;
+    }
+};
+
+static static_foo fff;
+static static_foo fff2(false);
 
 struct foo {
-    ll::signal<void()> sig;
+    foo() {
+        cout << "foo" << endl;
+    }
+    ll::signal<int()> sig;
 };
 
 struct B {
-    void dodo() {
+    int dodo() {
         cout << "kkkkkkkkkk" << endl;
+        return 0;
     }
-    ll::signal<void()>::member<decltype(&B::dodo)> _slot;
+    ll::signal<int()>::member<decltype(&B::dodo)> _slot;
 
     B() : _slot(this, &B::dodo) {}
 };
@@ -25,5 +43,6 @@ int main()
     B b;
     f.sig.connect(b._slot);
     f.sig.emit();
+    //cout << &ll::internal::module::__modules << endl;
     return 0;
 }

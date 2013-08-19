@@ -9,6 +9,7 @@
 #include "list.h"
 #include "etc.h"
 #include "bitorder.h"
+#include "friend.h"
 
 namespace ll {
 
@@ -28,6 +29,7 @@ private:
 };
 
 class page_allocator {
+    LL_FRIEND_MODULES();
 public:
     static const unsigned sys_page_size;
     static constexpr unsigned max_order            = 8;
@@ -89,16 +91,14 @@ private:
     void chunk_free(void *chunk);
 
     static page_allocator *_global;
+    int module_init();
 public:
     page_allocator();
     ~page_allocator();
     page *alloc(size_t size);
     void free(page *p);
 
-    page_allocator *global() {
-        if (!_global) {
-            _global = new page_allocator;
-        }
+    static page_allocator *global() {
         return _global;
     }
 };

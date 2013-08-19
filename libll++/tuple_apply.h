@@ -4,11 +4,6 @@
 #include <tuple>
 #include <type_traits>
 
-#define LL_FRIEND_TUPLE_APPLY()        \
-    friend class ll:tuple_apply;       \
-    friend class ll:tuple_apply::back; \
-    friend class ll:tuple_apply::front
-
 namespace ll {
     struct tuple_apply {
         // tuple expand at back of args.
@@ -105,7 +100,7 @@ namespace ll {
                 std::forward<_T>(t), 
                 std::forward<_Args>(args)...)) {
             
-            std::conditional<__back, back, front>::type::apply(
+            return std::conditional<__back, back, front>::type::apply(
                 std::forward<_F>(f), 
                 std::forward<_T>(t), 
                 std::forward<_Args>(args)...);

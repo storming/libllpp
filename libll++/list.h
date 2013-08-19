@@ -173,6 +173,7 @@ struct clist_entry {
     static const int type = list_type::clist;
     clist_entry() {}
     clist_entry(clist_entry *next, clist_entry *prev): _next(next), _prev(prev) {}
+    clist_entry(clist_entry *next): _next(next) {}
     clist_entry *_next;
     clist_entry *_prev;
 
@@ -348,6 +349,25 @@ public:
     const iterator end() const {
         return iterator(this);
     }
+
+
+
+    iterator rbegin() {
+        return iterator(_prev);
+    }
+
+    const iterator rbegin() const {
+        return iterator(_prev);
+    }
+
+    iterator rend() {
+        return iterator(this);
+    }
+
+    const iterator rend() const {
+        return iterator(this);
+    }
+
 };
 
 /* slist_entry */

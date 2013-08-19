@@ -10,32 +10,44 @@
 using std::cout;
 using std::endl;
 
+void test(int PTS) 
+{
+    void *pts[PTS];
+
+#define COUNT 100000000
+    cout << "PTS: " << PTS << endl;
+
+    do {
+        memset(pts, 0, sizeof(pts));
+        ll::time_trace t;
+        for (unsigned i = 0; i < COUNT; i++) {
+            unsigned n = i % PTS;
+            if (pts[n]) {
+                ll::page_allocator::global()->free((ll::page*)pts[n]);
+            }
+            pts[n] = ll::page_allocator::global()->alloc(1);
+        }
+        cout << t.check() / 1000 << endl;
+    } while (0);
+
+    do {
+        memset(pts, 0, sizeof(pts));
+        ll::time_trace t;
+        for (unsigned i = 0; i < COUNT; i++) {
+            unsigned n = i % PTS;
+            if (pts[n]) {
+                free(pts[n]);
+            }
+            pts[n] = malloc(8192);
+        }
+        cout << t.check() / 1000 << endl;
+    } while (0);
+}
 
 int main()
 {
-    ll::page_allocator a;
-
-    do {
-        ll::time_trace t;
-        for (unsigned i = 0; i < 1024 * 1024; i++) {
-            ll::page *pg1 = a.alloc(1);
-            ll::page *pg2 = a.alloc(1);
-            a.free(pg2);
-            a.free(pg1);
-        }
-        cout << t.check() / 1000 << endl;
-    } while (0);
-
-    do {
-        ll::time_trace t;
-        for (unsigned i = 0; i < 1024 * 1024; i++) {
-            void *p = malloc(8192);
-            void *p2 = malloc(8192);
-            free(p2);
-            free(p);
-        }
-        cout << t.check() / 1000 << endl;
-    } while (0);
-
+    for (int i = 1; i < 16; i++) {
+        test(i);
+    }
     return 0;
 }

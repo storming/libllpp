@@ -3,9 +3,6 @@
 
 #include "tuple_apply.h"
 
-#define LL_FRIEND_CLOSURE()  \
-    LL_FRIEND_TUPLE_APPLY(); \
-    template <typename F, typename ...Params> friend class ll::closure
 
 namespace ll {      // namespace ll
 
@@ -40,11 +37,11 @@ public:
 
     struct functor {
         functor(_T *obj, member f): _obj(obj), _f(f) {}
-        member _f;
         _T *_obj;
+        member _f;
         template <typename ..._Args>
         _R operator()(_Args&&...args) {
-            (_obj->*_f)(std::forward<_Args>(args)...);
+            return (_obj->*_f)(std::forward<_Args>(args)...);
         }
     };
 private:

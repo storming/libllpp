@@ -13,7 +13,7 @@ page_SOURCES = page.cpp
 test_closure_SOURCES = test_closure.cpp
 test_slotsig_SOURCES = test_slotsig.cpp
 
-LDFLAGS  = -L../libll++ -lll++ -Wall
-CXXFLAGS = -I.. -std=c++11 -O2
+LDFLAGS  = -L../libll++ -lll++ 
+CXXFLAGS = -I.. -std=c++11 -O2 -Wall
 
 
