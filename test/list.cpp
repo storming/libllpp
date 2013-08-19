@@ -41,7 +41,7 @@ void test_list()
     decltype(list)::remove(a[0]);
     dump(list);
     cout << "truncate: ";
-    list.truncate();
+    list.init();
     dump(list);
 }
 
@@ -61,7 +61,7 @@ void test_slist()
     list.remove(a[0]);
     dump(list);
     cout << "truncate: ";
-    list.truncate();
+    list.init();
     dump(list);
 }
 
@@ -81,7 +81,7 @@ void test_stlist()
     list.remove(a[0]);
     dump(list);
     cout << "truncate: ";
-    list.truncate();
+    list.init();
     dump(list);
 
     cout << "push back: ";
@@ -107,7 +107,7 @@ void test_clist()
     list.remove(a[0]);
     dump(list);
     cout << "truncate: ";
-    list.truncate();
+    list.init();
     dump(list);
 
     cout << "push back: ";

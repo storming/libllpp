@@ -5,6 +5,7 @@ libll___la_SOURCES = 		\
 	etc.cpp			\
 	bitorder.cpp		\
 	page.cpp		\
+	pool.cpp		\
 	module_end.cpp
 
 CXXFLAGS = -std=c++11 -O2 -Wall -D__LIBLLPP__

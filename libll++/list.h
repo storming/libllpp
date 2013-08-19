@@ -80,6 +80,10 @@ public:
 public:
     list() : _first(nullptr) {}
 
+    void init() {
+        _first = nullptr;
+    }
+
     static type *insert_back(type *listelm, type *elm) {
         register entry_type &listed = __LIST_ENTRY__(listelm);
         register entry_type &entry = __LIST_ENTRY__(elm);
@@ -122,16 +126,12 @@ public:
         return _first;
     }
 
-    type *next(type *elm) {
+    static type *next(type *elm) {
         return __LIST_OBJECT__(__LIST_ENTRY__(elm)._next);
     }
 
     bool empty() {
         return !_first;
-    }
-
-    void truncate() {
-        _first = nullptr;
     }
 
     type *push_front(type *elm) {
@@ -255,6 +255,11 @@ public:
 public:
     list() : clist_entry(this, this) {}
     
+    void init() {
+        _next = this;
+        _prev = this;
+    }
+
     static type *insert_back(type *listelm, type *elm) {
         register entry_type *listed = &(listelm->*__field);
         register entry_type *entry = &(elm->*__field);
@@ -273,11 +278,6 @@ public:
         register entry_type *entry = &(elm->*__field);
         entry->remove();
         return elm;
-    }
-
-    void truncate() {
-        _next = this;
-        _prev = this;
     }
 
     type *push_front(type *elm) {
@@ -425,6 +425,10 @@ public:
 public:
     list() : _first(nullptr) {}
 
+    void init() {
+        _first = nullptr;
+    }
+
     static type *insert_back(type *listelm, type *elm) {
         register entry_type &listed = __LIST_ENTRY__(listelm);
         register entry_type &entry = __LIST_ENTRY__(elm);
@@ -438,10 +442,6 @@ public:
         return !_first;
     }
 
-    void truncate() {
-        _first = nullptr;
-    }
-
     type *first() {
         return _first;
     }
@@ -450,7 +450,7 @@ public:
         return _first;
     }
 
-    type *next(type *elm) {
+    static type *next(type *elm) {
         return __LIST_OBJECT__(__LIST_ENTRY__(elm)._next);
     }
 
@@ -577,6 +577,11 @@ public:
 public:
     list() : _first(nullptr), _last(&_first) {}
 
+    void init() {
+        _first = nullptr;
+        _last = &_first;
+    }
+
     bool empty() {
         return !_first;
     }
@@ -589,13 +594,8 @@ public:
         return _first;
     }
 
-    type *next(type *elm) {
+    static type *next(type *elm) {
         return __LIST_OBJECT__(__LIST_ENTRY__(elm)._next);
-    }
-
-    void truncate() {
-        _first = nullptr;
-        _last = &_first;
     }
 
     type *push_front(type *elm) {

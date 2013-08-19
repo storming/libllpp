@@ -16,6 +16,10 @@ namespace ll {
 struct page {
     friend class page_allocator;
     union {
+        struct {
+            page *next;
+            page **ref;
+        };
         list_entry   entry;
         slist_entry  sentry;
         stlist_entry stentry;
@@ -23,6 +27,13 @@ struct page {
     };
     char *firstp;
     char *endp;
+    union {
+        unsigned index;
+        unsigned size;
+    };
+    unsigned space() {
+        return endp - firstp;
+    }
 private:
     unsigned order_size;
     void *base;
@@ -35,6 +46,7 @@ public:
     static constexpr unsigned max_order            = 8;
     static constexpr unsigned min_order            = 1;
     static constexpr unsigned page_boundary_index  = 12;
+    static constexpr unsigned page_boundary_size   = (1 << page_boundary_index);
     static constexpr unsigned page_min_size        = 1 << (page_boundary_index + min_order);
     static constexpr unsigned page_max_size        = 1 << (page_boundary_index + max_order);
 
@@ -97,7 +109,6 @@ public:
     ~page_allocator();
     page *alloc(size_t size);
     void free(page *p);
-
     static page_allocator *global() {
         return _global;
     }
