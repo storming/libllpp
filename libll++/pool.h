@@ -1,7 +1,8 @@
 #ifndef __LIBLLPP_POOL_H__
 #define __LIBLLPP_POOL_H__
 
-#include <string.h>
+#include <cstring>
+#include <cstdarg>
 
 #include "list.h"
 #include "friend.h"
@@ -15,6 +16,7 @@ struct pool_entry {
 
 class pool : public pool_entry {
     friend class pool_module;
+    friend class pool_vbuff;
 private:
     typedef ll_list(pool_entry, _entry) pool_list_t;
     pool *_parent;
@@ -55,9 +57,14 @@ public:
         return _global;
     }
 
+    static pool *instance() {
+        return _global;
+    }
+
     char *strdup(const char *str, size_t n);
     char *strdup(const char *str);
-
+    char *vsprintf(const char *fmt, va_list ap);
+    char *sprintf(const char *fmt, ...);
 };
 
 };

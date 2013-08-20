@@ -3,6 +3,7 @@
 
 #include "pool.h"
 #include "module.h"
+#include "printf.h"
 
 /* the following code refer to apr pool */
 
@@ -192,6 +193,170 @@ char *pool::strdup(const char *str)
     res = (char*)alloc(len);
     memcpy(res, str, len);
     return res;
+}
+
+#define SPRINTF_MIN_STRINGSIZE 32
+struct pool_vbuff : public printf_formatter::buff {
+    page *_node;
+    pool *_owner;
+    bool _got_a_new_node;
+    page *_freelist;
+
+    int flush() {
+        page *node, *active;
+        size_t cur_len, size;
+        char *strp;
+        size_t index;
+
+        active = _node;
+        strp = curpos;
+        cur_len = strp - active->firstp;
+        size = cur_len << 1;
+
+        /* Make sure that we don't try to use a block that has less
+         * than APR_PSPRINTF_MIN_STRINGSIZE bytes left in it.  This
+         * also catches the case where size == 0, which would result
+         * in reusing a block that can't even hold the NUL byte.
+         */
+        if (size < SPRINTF_MIN_STRINGSIZE)
+            size = SPRINTF_MIN_STRINGSIZE;
+
+        node = active->next;
+        if (!_got_a_new_node && size <= node->space()) {
+
+            list_remove(node);
+            list_insert(node, active);
+
+            node->index = 0;
+
+            _owner->_active = node;
+
+            index = (ll_align(active->space() + 1, page_allocator::page_boundary_size) - 
+                     page_allocator::page_boundary_size) >> page_allocator::page_boundary_index;
+
+            active->index = index;
+            node = active->next;
+            if (index < node->index) {
+                do {
+                    node = node->next;
+                }
+                while (index < node->index);
+
+                list_remove(active);
+                list_insert(active, node);
+            }
+
+            node = _owner->_active;
+        }
+        else {
+            node = _owner->_allocator->alloc(size);
+
+            if (_got_a_new_node) {
+                active->next = _freelist;
+                _freelist = active;
+            }
+
+            _got_a_new_node = true;
+        }
+
+        memcpy(node->firstp, active->firstp, cur_len);
+
+        _node = node;
+        curpos = node->firstp + cur_len;
+        endpos = node->endp - 1; /* Save a byte for NUL terminator */
+
+        return 0;
+    }
+};
+
+char *pool::vsprintf(const char *fmt, va_list ap)
+{
+    pool_vbuff vb;
+    char *strp;
+    size_t size;
+    page *active, *node;
+    size_t index;
+
+    vb._node = active = _active;
+    vb._owner = this;
+    vb.curpos = vb._node->firstp;
+
+    /* Save a byte for the NUL terminator */
+    vb.endpos = vb._node->endp - 1;
+    vb._got_a_new_node = false;
+    vb._freelist = nullptr;
+
+    /* Make sure that the first node passed to apr_vformatter has at least
+     * room to hold the NUL terminator.
+     */
+    if (vb._node->firstp == vb._node->endp) {
+        vb.flush();
+    }
+
+    if (printf_formatter::format(&vb, fmt, ap) == -1) {
+        return nullptr;
+    }
+
+    strp = vb.curpos;
+    *strp++ = '\0';
+
+    size = strp - vb._node->firstp;
+    size = ll_align_default(size);
+    strp = vb._node->firstp;
+    vb._node->firstp += size;
+
+    node = vb._freelist;
+    page *tmp;
+    while (node) {
+        tmp = node->next;
+        _allocator->free(node);
+        node = tmp;
+    }
+
+    /*
+     * Link the node in if it's a new one
+     */
+    if (!vb._got_a_new_node) {
+        return strp;
+    }
+
+    active = _active;
+    node = vb._node;
+
+    node->index = 0;
+
+    list_insert(node, active);
+
+    _active = node;
+
+    index = (ll_align(active->space() + 1, page_allocator::page_boundary_size) - 
+             page_allocator::page_boundary_size) >> page_allocator::page_boundary_index;
+
+    active->index = index;
+    node = active->next;
+
+    if (index >= node->index) {
+        return strp;
+    }
+
+    do {
+        node = node->next;
+    }
+    while (index < node->index);
+
+    list_remove(active);
+    list_insert(active, node);
+
+    return strp;
+}
+
+char *pool::sprintf(const char *fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    char *strp = vsprintf(fmt, ap);
+    va_end(ap);
+    return strp;
 }
 
 struct pool_module {
