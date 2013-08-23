@@ -4,6 +4,8 @@
 #include "libll++/etc.h"
 #include "libll++/time.h"
 
+#include "libll++/memory.h"
+
 #include <sys/mman.h>
 #include <unistd.h>
 

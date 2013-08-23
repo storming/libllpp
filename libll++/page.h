@@ -112,10 +112,6 @@ public:
     static page_allocator *global() {
         return _global;
     }
-
-    static page_allocator *instance() {
-        return _global;
-    }
 };
 
 };

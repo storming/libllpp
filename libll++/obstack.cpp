@@ -7,7 +7,7 @@ namespace ll {
 obstack::obstack(page_allocator *allocator)
 {
     if (!allocator) {
-        allocator = page_allocator::instance();
+        allocator = page_allocator::global();
     }
 
     page *chunk; 

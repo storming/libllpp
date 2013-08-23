@@ -57,10 +57,6 @@ public:
         return _global;
     }
 
-    static pool *instance() {
-        return _global;
-    }
-
     char *strdup(const char *str, size_t n);
     char *strdup(const char *str);
     char *vsprintf(const char *fmt, va_list ap);
