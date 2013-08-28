@@ -101,7 +101,7 @@ struct factory_of {
 };
 
 
-template <typename _T, typename _Factory>
+template <typename _T, typename _Factory = typename factory_of<_T>::type>
 struct factory_bind final : public _T {
     typedef _T type_t;
     typedef _Factory factory_t;

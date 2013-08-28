@@ -5,6 +5,7 @@
 #include "hash.h"
 #include "memory.h"
 #include "bitorder.h"
+#include "compare.h"
 
 namespace ll {
 
@@ -35,7 +36,8 @@ namespace hashmap_helper { // begin namespace hashmap_helper
         typename _Factory,
         typename _Allocator,
         typename _Hash,
-        typename _Compare>
+        typename _Compare,
+        typename _GetKey>
     struct impl {
         static constexpr unsigned min_order = 3;
         static constexpr unsigned max_order = 20;
@@ -54,6 +56,7 @@ namespace hashmap_helper { // begin namespace hashmap_helper
         typedef typename list_t::iterator           list_iterator_t;
         typedef _Hash                               hash_make_t;
         typedef _Compare                            compare_t;
+        typedef _GetKey                             getkey_t;
         class map;
 
         template <typename _AEntry = entry_t, bool = _AEntry::cache_hash>
@@ -66,7 +69,7 @@ namespace hashmap_helper { // begin namespace hashmap_helper
         template <typename _AEntry>
         struct get_hash_policy<_AEntry, false> {
             static unsigned get_hash(type_t *elm) {
-                key_t key = static_cast<key_t>(elm->hash_key());
+                key_t key = getkey_t::get_key(elm);
                 return hash_make_t::make(key);
             }
         };
@@ -87,14 +90,14 @@ namespace hashmap_helper { // begin namespace hashmap_helper
         template <typename _AEntry = entry_t, bool = _AEntry::cache_hash>
         struct compare_policy {
             static bool compare(type_t *elm, key_t key, unsigned hash) {
-                return hash == (elm->*__field)._hash && !compare_t::compare(elm, key);
+                return hash == (elm->*__field)._hash && !compare_t::compare(key, getkey_t::get_key(elm));
             }
         };
 
         template <typename _AEntry>
         struct compare_policy<_AEntry, false> {
             static bool compare(type_t *elm, key_t key, unsigned hash) {
-                return !compare_t::compare(elm, key);
+                return !compare_t::compare(key, getkey_t::get_key(elm));
             }
         };
 
@@ -517,11 +520,12 @@ template <
     typename _Allocator = pool,
     typename _Factory = typename factory_of<_T>::type,
     typename _Hash = hash<_Key>,
-    typename _Compare = _T>
-class hashmap: public hashmap_helper::impl<_Key, _T, _Base, _Entry, __field, _Factory, _Allocator, _Hash, _Compare>::map {
+    typename _Compare = equal_compare<_Key>,
+    typename _GetKey = _T>
+class hashmap: public hashmap_helper::impl<_Key, _T, _Base, _Entry, __field, _Factory, _Allocator, _Hash, _Compare, _GetKey>::map {
 public:
     hashmap(_Allocator *allocator, unsigned initsize = 32) : 
-        hashmap_helper::impl<_Key, _T, _Base, _Entry, __field, _Factory, _Allocator, _Hash, _Compare>::map(initsize, allocator) {}
+        hashmap_helper::impl<_Key, _T, _Base, _Entry, __field, _Factory, _Allocator, _Hash, _Compare, _GetKey>::map(initsize, allocator) {}
 };
 
 #define ll_hashmap(k, T, entry, ...) ll::hashmap<k, T, typeof_container(&T::entry), typeof_member(&T::entry), &T::entry, ##__VA_ARGS__>

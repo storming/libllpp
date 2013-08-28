@@ -19,12 +19,8 @@ struct foo {
     ll::hashmap_entry<false, true> sr_c_entry;
     ll::hashmap_entry<false, false> sr_nc_entry;
 
-    unsigned hash_key() {
-        return _key;
-    }
-
-    static int compare(foo *f, unsigned key) {
-        return f->_key - key;
+    static unsigned get_key(foo *f) {
+        return f->_key;
     }
 };
 
