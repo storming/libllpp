@@ -1,3 +1,7 @@
-source: .
-pygments: true
+source:       .
+destination:  ./_site
+plugins:      ./_plugins
+layouts:      ./_layouts
+
+pygments:     true
 
