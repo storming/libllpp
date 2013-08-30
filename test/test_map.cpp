@@ -18,6 +18,28 @@ struct foo {
 };
 
 typedef ll::factory_bind<foo> foo_impl;
+
+struct foo2 {
+
+};
+
+struct foo3 : foo2 {
+    virtual int kaka() {
+        return 0;
+    }
+    virtual int kaka2() {
+        return 0;
+    }
+};
+
+struct foo4 : foo3 {
+    int kaka() {
+        return 0;
+    }
+    int kaka2() {
+        return 0;
+    }
+};
 int main()
 {
     ll_map(unsigned, foo_impl, _entry) map;
@@ -63,5 +85,10 @@ int main()
     cout << "====" << endl;
     cout << map.front()->_key << endl;
     cout << map.back()->_key << endl;
+
+    cout << "====" << endl;
+    cout << sizeof(foo3) << endl;
+    cout << sizeof(foo4) << endl;
+
     return 0;
 }

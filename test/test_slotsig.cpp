@@ -41,7 +41,9 @@ int main()
 {
     foo f;
     B b;
+    ll_member_slot(f.sig, B, dodo) ss(b, &B::dodo);
     f.sig.connect(b._slot);
+    //f.sig.connect(ll::pool::global(), b, &B::dodo);
     f.sig.emit();
     //cout << &ll::internal::module::__modules << endl;
     return 0;

@@ -53,6 +53,7 @@ struct factory<_T, cache> {
     static void destroy(type_t *p, allocator_t *a) {
         if (p) {
             ((type_t*)p)->~type_t();
+
             a->free(p);
         }
     }
@@ -73,6 +74,50 @@ struct factory<_T, caches> {
         if (p) {
             ((type_t*)p)->~type_t();
             a->free(p, sizeof(type_t));
+        }
+    }
+};
+
+template <typename _T>
+struct factory<_T, void> {
+public:
+    typedef _T type_t;
+    typedef caches allocator_t;
+private:
+    struct alloc_type {
+        size_t _size;
+        type_t _obj;
+    };
+public:
+    template <typename ..._Args>
+    static type_t *create(allocator_t *a, _Args &&... args) {
+        alloc_type *p = a->alloc(sizeof(alloc_type));
+        p->_size = sizeof(alloc_type);
+
+        return new(&p->_obj) type_t(std::forward<_Args>(args)...);
+    }
+
+    static void destroy(type_t *p, allocator_t *a) {
+        if (p) {
+            p->~type_t();
+            alloc_type *at = containerof_member(p, &alloc_type::_obj);
+            a->free(at, at->size);
+        }
+    }
+
+    template <typename ..._Args>
+    static type_t *create(_Args &&... args) {
+        alloc_type *p = caches::global()->alloc(sizeof(alloc_type));
+        p->_size = sizeof(alloc_type);
+
+        return new(&p->_obj) type_t(std::forward<_Args>(args)...);
+    }
+
+    static void destroy(type_t *p) {
+        if (p) {
+            p->~type_t();
+            alloc_type *at = containerof_member(p, &alloc_type::_obj);
+            caches::global()->free(at, at->size);
         }
     }
 };
@@ -115,6 +160,16 @@ inline _T *create(_Allocator *allocator, _Args &&... args) {
 template <typename _T, typename _Factory = typename factory_of<_T>::type, typename _Allocator = typename _Factory::allocator_t>
 inline void destroy(_T *p, _Allocator *allocator) {
     _Factory::destroy(p, allocator);
+}
+
+template <typename _T, typename ..._Args>
+inline _T *create(_Args &&... args) {
+    return static_cast<_T*>(factory<_T, void>::create(std::forward<_Args>(args)...));
+}
+
+template <typename _T, typename _Factory = typename factory_of<_T>::type, typename _Allocator = typename _Factory::allocator_t>
+inline void destroy(_T *p) {
+    factory<_T, void>::destroy(p);
 }
 
 }
