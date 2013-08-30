@@ -41,6 +41,9 @@ title: libll++ blog
 </p>
 <hr />
 <ul>
-<li> 23 Jul 2013 <a href="/libllpp/2013/07/23/member.html"> member functional</a></li>
+{% for post in site.posts %}
+  <li>{{ post.date | date_to_string }} <a href="{{ site.baseurl }}{{ post.url }}">{{ post.title }}</a></li>
+{% endfor %}
+　　　　
 </ul>
 
