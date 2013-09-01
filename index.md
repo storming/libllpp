@@ -14,7 +14,8 @@ libll++是我这段时间学习开发库，发布在：https://github.com/stormi
 <hr>  
 ##2013-9-1 member
 
-对于c语言工程师来说，使用内存池和嵌入式的数据结构还有宏是相当习惯的事情。这在某种情况下，保障了c语言程序的高效。这并不妨碍我们对数据的操作，或许我们已经锻炼出了糟糕语言环境下的能力。
+对于c语言工程师来说，使用内存池和嵌入式的数据结构还有宏是相当习惯的事情。某种意义上，这种语法上的缺失保障了c语言程序的高效，就像拥有越少的人越努力。
+下面的例子是个很标准的c语言链表声明。
 
 	struct foo {
 		LIST_ENTRY(foo) _entry
@@ -22,4 +23,48 @@ libll++是我这段时间学习开发库，发布在：https://github.com/stormi
 	
 	LIST_HEAD(, foo) alist;
 
+这种链表相关宏，在linux的queue.h中。这跟STL的方式有较大的不同，STL是数据算法分离模式，而在c中往往是融合模式。
+这在内存处理上有较大的优势。而STL则显得更加学术性。
+这种模式阐述了一种本质，代码是静态的，只有数据是动态的。静态说明本质。如果你曾经属于某个容器，你就具有这个容器的特质。
+在现实的开发中，这屡屡被验证，甚至几乎不会出现偏差。
+
+如果要在c++中实现c的这种模式，难度是很大的。offsetof在g++中需要编译选项，container_of(这是linux kernel的宏)就更加困难了。
+
+好在c++模板支持类成员地址，这给我的想法提供了一线生机。
+对于开发者意图来说，如果用c++，我就不太情愿用宏，除非在语法上无法再简化了。
+效率不是我担心的问题，到语法树级别，c和c++可能会有差别，但是差距不大。
+
+为此，我在libll++里写的第一个文件就是member.h，它是一切class member相关操作的基础。
+考虑到c++是个多重继承语言，在做这方面的操作的时候，需要有个清晰的认识。
+
+	/* typeof_member */
+	template <typename _T, typename _C>
+	_T typeof_member_helper(_T _C::*member);
+	#define typeof_member(x) decltype(ll::typeof_member_helper(x))
+
+
+	/* typeof_container */
+	template <typename _T, typename _C>
+	_C typeof_container_helper(_T _C::*member);
+	#define typeof_container(x) decltype(ll::typeof_container_helper(x))
+
+类成员地址模板很麻烦，c++11里有那么多的aoto也不是空穴来风。这2个宏一个是提取类成员的类型，一个是提取类成员的宿主。
+这是个很有意思的事情。
+	struct foo {
+		some_entry _entry;
+	};
+
+	struct foo2 : foo {
+		...xxxx
+	};
+
+那么typeof_container(&foo2::_entry)是哪个？是foo，这个要注意。
+
+offsetof_member和containerof_member是c++版的offsetof和container_of。我的核心想法是要在c++上实现c语言级的效率。
+stl过于学术性，它的分离性，导致它的过分依赖内存分配效率。
+
+member.h剩下的部分是个很大的宏，它用c++的sfinae去检测类成员类型是否存在。
+在很少的情况下，会用到它。但是，我把它当作脑筋急转弯收录到member.h中。
+里面的模板偏例应用相当高超，我的第一个模板偏例例子就是这个，我整整看了2天才看明白。
+至于能够自己完成，则在一段时间以后。
 
