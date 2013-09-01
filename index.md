@@ -50,4 +50,12 @@ libll++是我这段时间学习开发库，发布在：https://github.com/stormi
 
 类成员地址模板很麻烦，c++11里有那么多的aoto也不是空穴来风。这2个宏一个是提取类成员的类型，一个是提取类成员的宿主。
 这是个很有意思的事情。
+	struct foo {
+		some_entry _entry;
+	};
+
+	struct foo2 : foo {
+		something
+	};
+
 
