@@ -56,7 +56,6 @@ libll++是我这段时间学习开发库，发布在：https://github.com/stormi
 
 	struct foo2 : foo {
 		something
-
 	};
 
 那么typeof_container(&foo2::_entry)是哪个？是foo，这个要注意。
