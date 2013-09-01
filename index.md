@@ -55,7 +55,16 @@ libll++是我这段时间学习开发库，发布在：https://github.com/stormi
 	};
 
 	struct foo2 : foo {
-		...xxxx
+		something
 	};
 
+那么typeof_container(&foo2::_entry)是哪个？是foo，这个要注意。
+
+offsetof_member和containerof_member是c++版的offsetof和container_of。我的核心想法是要在c++上实现c语言级的效率。
+stl过于学术性，它的分离性，导致它的过分依赖内存分配效率。
+
+member.h剩下的部分是个很大的宏，它用c++的sfinae去检测类成员类型是否存在。
+在很少的情况下，会用到它。但是，我把它当作脑筋急转弯收录到member.h中。
+里面的模板偏例应用相当高超，我的第一个模板偏例例子就是这个，我整整看了2天才看明白。
+至于能够自己完成，则在一段时间以后。
 
