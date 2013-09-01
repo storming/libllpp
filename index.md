@@ -12,7 +12,14 @@ libll++是我这段时间学习开发库，发布在：https://github.com/stormi
 
 2013-9-1
 <hr>  
-###2013-9-1 member
+##2013-9-1 member
 
+对于c语言工程师来说，使用内存池和嵌入式的数据结构还有宏是相当习惯的事情。这在某种情况下，保障了c语言程序的高效。这并不妨碍我们对数据的操作，或许我们已经锻炼出了糟糕语言环境下的能力。
+
+	struct foo {
+		LIST_ENTRY(foo) _entry
+	}
+	
+	LIST_HEAD(, foo) alist;
 
 
