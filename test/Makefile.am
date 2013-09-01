@@ -8,7 +8,8 @@ noinst_PROGRAMS = 		\
 	test_pool		\
 	test_obstack		\
 	test_hashmap		\
-	test_map
+	test_map		\
+	test_reactor
 
 test_member_SOURCES  		= test_member.cpp
 test_tuple_apply_SOURCES 	= test_tuple_apply.cpp
@@ -20,6 +21,7 @@ test_pool_SOURCES		= test_pool.cpp
 test_obstack_SOURCES		= test_obstack.cpp
 test_hashmap_SOURCES		= test_hashmap.cpp
 test_map_SOURCES		= test_map.cpp
+test_reactor_SOURCES		= test_reactor.cpp
 
 LDFLAGS  = -L../libll++ -lll++ 
 CXXFLAGS = -I.. -std=c++11 -O2 -Wall

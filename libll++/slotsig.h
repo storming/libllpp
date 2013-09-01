@@ -76,7 +76,7 @@ public:
         }
     }
 
-    int emit(_Args&&...args) {
+    int emit(_Args...args) {
         int n;
         auto end = _list.end();
         for (auto it = _list.begin(); it != end; ++it) {
@@ -87,7 +87,7 @@ public:
         return 0;
     }
 
-    int remit(_Args&&...args) {
+    int remit(_Args...args) {
         int n;
         auto end = _list.rend();
         for (auto it = _list.rbegin(); it != end; --it) {
@@ -164,12 +164,15 @@ public:
 
     void disconnect_all() {
         if (_slot) {
-            _slot.disconnect();
+            _slot->disconnect();
         }
     }
 
-    int emit(_Args&&...args) {
-        return (*_slot)(std::forward<_Args>(args)...);
+    int emit(_Args...args) {
+        if (_slot) {
+            return (*_slot)(std::forward<_Args>(args)...);
+        }
+        return 0;
     }
 
 };

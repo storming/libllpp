@@ -31,6 +31,14 @@ public:
         return _value;
     }
 
+    timeval get_msec() {
+        return _value / (usecs_of_second / msecs_of_second);
+    }
+
+    void set_msec(timeval value) {
+        _value = value * (usecs_of_second / msecs_of_second);
+    }
+
     timeval operator +(time &other) {
         return _value + other._value;
     }
@@ -114,6 +122,5 @@ public:
 };
 
 };
-
 #endif
 

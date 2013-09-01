@@ -4,7 +4,7 @@ using std::cout;
 using std::endl;
 
 #include "libll++/slotsig.h"
-#include "libll++/time.h"
+#include "libll++/timeval.h"
 #include "libll++/module.h"
 
 struct static_foo {

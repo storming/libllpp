@@ -11,6 +11,8 @@ libll___la_SOURCES = 		\
 	cache.cpp		\
 	crc.cpp			\
 	rbtree.cpp		\
+	reactor.cpp		\
+	file_io.cpp		\
 	module_end.cpp
 
 CXXFLAGS = -std=c++11 -O2 -Wall -D__LIBLLPP__

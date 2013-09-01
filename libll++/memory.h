@@ -3,6 +3,7 @@
 
 #include <utility>
 #include <cassert>
+#include <new>
 
 #include "pool.h"
 #include "obstack.h"
