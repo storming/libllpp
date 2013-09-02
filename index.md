@@ -23,18 +23,20 @@ libll++是我这段时间学习开发库，发布在：https://github.com/stormi
 list是个非常非常常用的数据组织方式，几乎每天都要用到，在所有数据结构中它的出场率我认为是最高的。在c语言中，对数据结构的操作往往比较细致。
 这跟很多高级语言或者c++的stl有本质的不同。stl的list好像是个循环链表，也仅此而已。而在用c开发应用的时候，常用的list有4种。
 
-slist，一个单纯的单向链表。linux的queue.h对它的定义如下:
+####slist，一个单纯的单向链表。
 
-	#define SLIST_HEAD(name, type)
-	struct name {
+可以参阅linux的queue.h的SLIST_相关宏。下面是个简单示例。
+
+	struct entry {
         	struct type *slh_first; /* first element */
 	}
-	#define SLIST_ENTRY(type)
-	struct {
+	struct head {
 	       	struct type *sle_next;  /* next element */
 	}
 
-链表和节点都是一个指针，相当的简单和紧凑。
+链表和节点都是一个指针，相当的简单和紧凑。它在使用上限制颇多，只能对链表头进行快速insert和remove操作，如果要删除某个中间节点必须要找到该节点
+的上一个节点。用c++的语意来说它只能很好的完成push_front和pop_front。不过，我们应该满足，这么小的开销完成这些已经很不错了。但是在实际应用中
+它的适用面相当的广泛。
 
 
 
