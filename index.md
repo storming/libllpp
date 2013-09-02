@@ -20,6 +20,22 @@ libll++是我这段时间学习开发库，发布在：https://github.com/stormi
 
 在处理完member后，我就迫不及待的去开始动手写我的第一个实用数据结构封装，list。
 
+list是个非常非常常用的数据组织方式，几乎每天都要用到，在所有数据结构中它的出场率我认为是最高的。在c语言中，对数据结构的操作往往比较细致。
+这跟很多高级语言或者c++的stl有本质的不同。stl的list好像是个循环链表，也仅此而已。而在用c开发应用的时候，常用的list有4种。
+
+* slist，一个单纯的单向链表。linux的queue.h对它的定义如下:
+
+	#define SLIST_HEAD(name, type)                                          \
+	struct name {                                                           \
+        	struct type *slh_first; /* first element */                     \
+	}
+	#define SLIST_ENTRY(type)                                               \
+	struct {                                                                \
+	       	struct type *sle_next;  /* next element */                      \
+	}
+
+链表和节点都是一个指针，相当的简单和紧凑。
+
 
 
 ------------------------------------------------------------------------------------------------------------------------------------------
