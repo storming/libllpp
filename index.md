@@ -160,6 +160,39 @@ libll++的默认内存池来自于apr pool，在以后的blog中会提到它。a
 
 ####clist，一个万能的双向循环链表
 
+前面3种链表的实现均来自于linux的queue.h，clist则是我随手写了一个实现。以前曾经看过stl的代码，它的list好像就是用循环链表写的。
+循环链表不难理解，list和entry是同一个数据结构。
+
+	struct entry {
+		struct entry *next;
+		struct entry *prev;
+	};
+
+	typedef struct entry clist;
+
+这样clist的first就是head->next，clist的last就是head->prev。head在初始化的时候，next和prev都指向自己。它可以push/pop front和
+push/pop back，效率都很高。可以正向遍历也可以逆向遍历。在插入删除的时候，不需要判断NULL，效率很不错。它也可以高效完成
+remove self。总之吧，它能完成list的所有功能。当然它的内存开销也是最大的，head和entry都是2个指针。
+
+在用c开发的过程中，clist是个较少被用到的数据结构。一方面它的开销比较大，比list的head多一个指针。单个看不算什么，如果一个
+很大的hash表，用clist就很可观了。clist的性能略低于list，不过几乎可以忽略不计，关键的问题在于clist需要特定的初始化。在c
+里是没有构造函数的，如果忘记初始化你就悲剧了。而list的初始化则简单的多，清0就行了。
+
+clist的出现场合往往是既要remove self，又要能够保障时序的正序。
+
+某些特定的场合clist具有压倒性的优势。比如，基于生命周期session管理模式，这多用于网络应用。
+比如，我们建立一个系统，这个系统最大能够cache 1000个session。用户下线后，session不是立刻被清除，而是cache起来。如果，用户
+一段时间内重新登录，立刻启用cache的session。当然，用户数是要远远大于cache数的。当新用户登录后，cache已经满了，没有session可
+分配给新用户，就会释放掉最不活跃的session。这就需要一个基于时序性的session活跃度记录。通常的做法是，用户有行为，就会把session
+从cache list中摘除然后push_front到cache list中，为了高效完成这个功能必须要有remove self能力。cache list的back则是最不活跃
+session。这需要cache list能够高效的检索tail元素。这种场合下，clist就是舍我其谁的唯一选择。
+
+
+
+
+
+
+
 
 ------------------------------------------------------------------------------------------------------------------------------------------
 
