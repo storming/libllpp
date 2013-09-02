@@ -75,6 +75,10 @@ slist的另外一个重要的出场场合是它是hash表的一个基础数据�
 的散列在理论上决定了链表的长度不会很高，所以它往往是用链表作为散列后数据组织工具。不过在通常意义下，slist只是使用push_front，
 pop_front, for遍历，尽量不要考虑元素定位和中间元素删除。
 
+有一个面试题，会经常出现在很多公司的考卷上：把一个单向链表反转。这其实就是在考单向链表head操作的stack特性。从原链表上pop_front，
+push_front到新的链表，就完成了反转过程。而且，没有额外开销。
+
+
 ####stlist，一个可以尾部插入的slist增强版
 
 可以参阅linux的queue.h的STAILQ_相关宏。它的entry跟slist完全一样，只是head不同。
@@ -95,7 +99,66 @@ slist在插入时序上是逆序，stlist的push_back则是正序，当然了pus
 
 ####list，最常用且功能强大的list
 
+可以参阅linux的queue.h的LIST_相关宏，它的head和slist完全一样，只是entry多了个指针。
 
+	struct entry {
+		type *next;
+		type **prev; /* addr of prev element's next, 有些代码会用ref这个词而不是prev */
+	};
+
+list跟slist类似，在本质上只是个单向链表，但是它的entry多了个指针，让它具有了一个特殊的能力：自移除能力。由于prev指向的是上个element
+的next指针的地址（如果是push_front，会指向head的first），所以element可以不去遍历list就能把自己从链表中移除出去。甚至element不需要
+知道它属于哪个链表，只要它知道它在链表里就能把自己移除出去。这很有意思，slist的特性这里就不再说了，只是讨论remove self的使用。
+
+	enum {
+		peer_closed,
+		peer_connecting,
+		peer_connected,
+		peer_idle,
+		peer_busy,
+		peer_linger,
+		peer_state_max,
+	};
+	struct peer_t {
+		int state;
+		entry entry;
+	};
+	list peer_lists[peer_state_max];
+	void update_peer_state(peer_t *peer, int state) {
+		if (peer->state == state) {
+			return;
+		}
+		list_remove(peer->entry);
+	
+		//do something
+	
+		peer->state = state;
+		peer_lists[state].push_front(peer);
+	}
+	
+上面这个例子有时候用在高性能异步网络开发上。list_remove表现了2种能力，第一不去判断自己属于哪个链表，第二不去遍历去确定上一个是谁，
+程序逻辑只是确定它肯定在某个链表里，直接把自己从链表中remove出去。这产生了极高的性能。
+
+如果hash表使用list作为散列后数据结构，那么这个hash表就也具有这种特性。不需要通过key，element直接就能把自己从hash表中remove出去。在
+网络开发中，每个peer一般都会有个逻辑id，比如说用户名。当侦测到对端关闭了连接，这时候我们需要清除这个context。常规想法是通过id去删除
+相应的hash entry，但是list的这种特性可以让程序员直接完成这个操作而不必通过比对查找。这会产生极高的性能提升。
+
+libll++的默认内存池来自于apr pool，在以后的blog中会提到它。apr pool的chunk管理使用的就是这种list，但是它把它的应用提到了一个新的
+高度。一般list的初始化只是把first清0即可。每次push_front，element的prev实际是指向了first的地址。apr pool的chunk管理有个前提，就是
+链表里至少要有一个chunk，它的实现示例代码如下：
+
+	void pool_init(pool *pool) {
+		chunk *new_chunk = some alloc....
+		new_chunk->next = null;
+		new_chunk->prev = &new_chunk->next;
+		pool->chunk_list = new_chunk;
+	}
+
+这里prev不是指向了head的first，而是指向了自己的next。这导致它完成了一个单向循环链表，而且不丢失remove self能力。我第一次看到这种
+设计，给我的第一感觉是老式的拨号盘电话。list的head也不再具有特定的意义，它只是标注最关心的当前的那个节点，也就是“主分配偏好”节点。
+这是splay tree的单向循环链表版本，相当的让人叹为观止。
+
+####clist，一个万能的双向循环链表
 
 
 ------------------------------------------------------------------------------------------------------------------------------------------
