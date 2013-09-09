@@ -13,6 +13,127 @@ libll++是我这段时间学习开发库，发布在：https://github.com/stormi
 2013-9-1
 
 ------------------------------------------------------------------------------------------------------------------------------------------
+##2013-9-9 closure and lambda
+
+记不清第一次接触closure这个词儿是什么时候了，不过应该是在学习某种脚本语言的时候看到的，lua、C#、AS3？这个单词的计算机类解释是“闭包”，
+坦率的说当时没理解“闭包”的含义。我被这种高度抽象、深邃的中文解释迷惑了，我每每都是这么愚钝。我的应对方法就是放弃中文解释，closure就是closure。
+
+我喜欢用c语言来解释现代计算机语言的高级概念，简单，直接。在服务器开发应用中，几乎所有的程序都会用到timer，有时候timer是唯一可依据的“轴”。
+比如说一个socket server，accept一个connection进来，到close这个connection，需要一个timer始终跟随它。accept进来后多长时间内收到handshark包，
+流控，keep heartbeat，关闭的时候linger close，这些都需要一个timer。下面示例是个简单的timer interface。
+
+	typedef int (*timer_handler_t)(struct timer *, struct timeval*, void *);
+	struct timer {
+		rbtree_node node; //一般都是用红黑树来管理timer
+		struct timeval expires;
+		struct timeval interval;
+		timer_handler_t handler;
+		void *magic;
+	};
+	struct timer *timer_schedule(struct timeval *expires, struct timeval *interval, timer_handler_t handler, void *magic);
+
+这种数据描述在c里面是非常常见的，特别是在事件驱动程序中，timer管理是个典型的事件驱动模式。timer_handler_t明显是个callback，在c
+中往往一看到这种typedef就直接归类到callback，这类callback的最后一个参数基本都是`void *`。callback函数只是定义了方法，`void *`里放置
+的是具体callback的context。比如说上面socket server的例子，context可能是某个peer的指针，或者创建了一个全局“秒级”timer，去回收某些资源，
+context是某些全局数据结构指针。或者函数知道context是什么，传入个NULL。这些context对timer manager来说是透明的，manager不去解释它，一般我会用
+magic这个词来声明类似的变量。
+
+如果把context和callback放到一个结构中，入下面的示例：
+
+	struct timer_closure {
+		int (*handler)(struct timer *, struct timeval *, void *);
+		void *context;
+	};
+	struct timer {
+		rbtree_node node; //一般都是用红黑树来管理timer
+		struct timeval expires;
+		struct timeval interval;
+		struct timer_closure closure;
+	};
+	struct timer *timer_schedule(struct timeval *expires, struct timeval *interval, timer_closure *closure);
+
+那么，timer_closure就是个传统意义的closure：一个带context的callback。有些解释说：一个有状态的callback。基本含义都是相同的。在第一个例子
+中，本质上也是closure，有callback有context，只不过是分离传入的。从本质上来说所有的callback都是closure，区别只是有些context是默认已知的，
+有些context是需要明确指定的。
+
+上面讲的是c的closure实现，那么在脚本语言中closure会有不同么？没有本质的不同，比如说下面的as3代码。
+	public class foo {
+		static public function dodo(var callback: function): void {
+			callback();
+		}
+	};
+	public class foo2 {
+		public function doit(): void {
+			//do someting
+		}
+	}
+	
+	var f: foo2 = new foo2;
+	foo::dodo(f.doit);
+
+传入的是`f.doit`而不是foo2::doit，可以这么理解：它把foo2的实例和doit这个函数“打包”传给了foo::dodo。
+
+c语言的closure看上去没什么不好，简单清晰，它从c存在开始就一直被广泛使用，当然了大多数时候没人叫它closure。
+事件驱动这种最简单的程序模式，它的应用面却是非常非常广泛的。既然涉及到事件驱动，必须要讨论callback，或者其它
+一些本质上无区别的名称上有区别的方式，closure, slot and signal, message queue（send模式）。在这段文字中，
+我阐述了一些“嘲讽”和轻佻的“自嘲”。我讨厌过渡封装，如果一个简单的概念被封装的让人看不懂，这算是什么呐？
+另外一方面我会在libll++里大量使用closure：噢，我在用c++，这必须要稍微高端点，让封装来的更猛烈点吧。
+libll++是个实验性工程，我在暗示自己没必要搞得那么正规。
+
+在c++11的世界里，closure有很多种实现方式。首先就是语言级支持的lambda。第一次看到这个东西让我兴奋异常，
+这东西太cool了，然后就是一盆凉水。
+
+自从在baidu和google上看到lambda，我就开始拷问g++，可能有一周的时间。想像一下，一个恶魔拿着鞭子反复的抽
+g++ 4.7。我试图用个简单的方式来解释lambda，下面是个lambda代码：
+
+	template <typename _F>
+	void walk() {
+		for (something) {
+			f(v);
+		}
+	}
+	
+	int do_sum() {
+		int sum = 0;
+		walk([&](int n) {sum += n});
+		return sum;
+	}
+
+下面是我猜测的lambda的实现，c++环境下编译器去生成代码是相当普遍的，最早的就是copy构造。在g++里，lambda
+是在基本语言环境下自动生成的。
+
+	int do_sum() {
+		int sum = 0;
+		class lambda_n {
+			int &_sum;
+		public:
+			lambda_n(int& sum) : _sum(sum) {}
+			void operator()(int n) {
+				_sum += n;
+			}
+		} instance_n(sum);
+		
+		walk(instance_n);
+		return sum;
+	}
+
+在g++中，lambda是个函数内联类，至少在现在的版本是这样，它符合所有的函数内联类的特性。也就是说每个lambda是个类，
+准确的说是个重载了()的functor类。而且这是个特殊的类，我们无法decltype它，你只能用auto去索引它，它的大小根据
+它的捕获参数不同而不同。这让人很沮丧。
+
+callback一般有两种模式，同步callback和异步callback。walk和do_sum这个例子就是个同步callback，context的生命周期
+跟调用函数一致。异步callback的context的生命周期则是不确定的，比如说事件驱动。
+
+lambda是可以赋值给function的。从语法角度，只要是函数可见域，lambda就可以捕获。我对于这种赋值是否依然生命周期具有局部性
+没有继续研究下去。它违背了我的想法，我希望一个异步closure，我希望能够管控内存分配。就是lambda和function配合完成了
+第一项，它也无法完成第二项，lambda是变长的内存怎么控制？
+
+ok，有些人会说如果lambda不捕获任何变量，你可以把它当作一个静态函数用。我想说，不捕获变量，它还有什么用？我就
+那么懒得写个函数么？
+
+
+
+------------------------------------------------------------------------------------------------------------------------------------------
 ##2013-9-3 libll++的list实现
 
 对于libll++的基础数据结构的实现，我希望能够秉承以下基本原则：
