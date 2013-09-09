@@ -57,6 +57,7 @@ magic这个词来声明类似的变量。
 有些context是需要明确指定的。
 
 上面讲的是c的closure实现，那么在脚本语言中closure会有不同么？没有本质的不同，比如说下面的as3代码。
+
 	public class foo {
 		static public function dodo(var callback: function): void {
 			callback();
