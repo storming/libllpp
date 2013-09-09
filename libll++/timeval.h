@@ -2,6 +2,7 @@
 #define __LIBLLPP_TIME_H__
 
 #include <sys/time.h>
+#include <limits>
 
 namespace ll {
 
@@ -14,6 +15,7 @@ public:
     static constexpr timeval msecs_of_second = 1000L;
     static constexpr timeval usecs_of_second = 1000000L;
     static constexpr timeval nsecs_of_second = 1000000000L;
+    static constexpr timeval max = std::numeric_limits<timeval>::max();
 
     time(timeval value = 0) : _value(value) {}
 

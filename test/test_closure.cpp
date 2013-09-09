@@ -21,21 +21,18 @@ int main()
 {
     int n = 1;
     foo f;
-    ll::closure<foo, int&> c1(f, n);
-    c1(100);
-    c1(100);
 
-    auto c2 = ll::the_closure(f, n);
-    c2(100);
-    c2(100);
+    ll::closure<void(int)> *c;
 
-    ll::closure<decltype(&foo::dodo), int&> c3(f, &foo::dodo, n);
-    c3(100);
-    c3(100);
+    ll::closure<void(int)>::instance<foo, int&> c5(f, n);
+    c5(100);c5(100);
 
-    auto c4 = ll::the_closure(f, &foo::dodo, n);
-    c4(100);
-    c4(100);
+    c = &c5;
+    (*c)(100);(*c)(100);
+
+    ll::closure<void(int)>::instance<foo, int&> c6(f, &foo::dodo, n);
+    c = &c6;
+    (*c)(100);(*c)(100);
 
     return 0;
 }

@@ -168,7 +168,7 @@ inline _T *create(_Args &&... args) {
     return static_cast<_T*>(factory<_T, void>::create(std::forward<_Args>(args)...));
 }
 
-template <typename _T, typename _Factory = typename factory_of<_T>::type, typename _Allocator = typename _Factory::allocator_t>
+template <typename _T>
 inline void destroy(_T *p) {
     factory<_T, void>::destroy(p);
 }

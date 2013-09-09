@@ -64,7 +64,7 @@ public:
         return _maxevents;
     }
 
-    int open(int fd, unsigned flags, io *&out);
+    int open(int fd, unsigned flags, io::closure_t *handler = nullptr);
     int close(int fd, bool linger = false);
     int modify(int fd, int flags);
     int loop(time &t);

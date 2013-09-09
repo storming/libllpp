@@ -17,7 +17,7 @@ unsigned reactor::_default_maxevents = 32;
 inline void reactor::io::deattch() 
 {
     file_io::deattch();
-    disconnect_all();
+    disconnect();
 }
 
 reactor::reactor(pool *apool, unsigned maxfds, unsigned maxevents) :
@@ -48,7 +48,7 @@ void reactor::set_default_params(unsigned maxfds, unsigned maxevents)
     _default_maxevents = maxevents;
 }
 
-int reactor::open(int fd, unsigned flags, io *&out)
+int reactor::open(int fd, unsigned flags, io::closure_t *handler)
 {
     if (!ll_fd_valid(fd) && (unsigned)fd >= _maxfds) {
         return e_inval;
@@ -88,7 +88,9 @@ int reactor::open(int fd, unsigned flags, io *&out)
 
     ll_sys_failed_return_ex(epoll_ctl(_fd, EPOLL_CTL_ADD, fd, &event), io->deattch());
     
-    out = io;
+    if (handler) {
+        ll_failed_return_ex(io->connect(handler), io->deattch());
+    }
     return ok;
 }
 

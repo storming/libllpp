@@ -2,79 +2,107 @@
 #define __LIBLLPP_CLOSURE_H__
 
 #include "tuple_apply.h"
-
+#include "friend.h"
 
 namespace ll {      // namespace ll
 
-template <typename _F, typename ..._Params>
+template <typename signature>
 class closure;
 
-template <typename _F, typename ..._Params>
-class closure {
+template <typename _R, typename ..._Args>
+class closure<_R(_Args...)> {
 private:
-    _F& _f;
-    std::tuple<_Params...> _params;
-public:
-    typedef _F functor;
-    explicit closure(_F &f, _Params&&...params) : _f(f), _params(std::forward<_Params>(params)...) {}
-    explicit closure(_F *f, _Params&&...params) : _f(*f), _params(std::forward<_Params>(params)...) {}
+    typedef closure<_R(_Args...)> closure_t;
+    typedef _R (*calllback_t)(closure_t*, _Args&&...);
+    calllback_t _callback;
+    closure(calllback_t callback) : _callback(callback) {}
 
-    template <bool __apply_back = false, typename ..._Args>
-    auto operator ()(_Args&&...args) -> decltype(tuple_apply::apply<__apply_back>(_f, _params, std::forward<_Args>(args)...)) {
-        return tuple_apply::apply<__apply_back>(_f, _params, std::forward<_Args>(args)...);
+public:
+    typedef _R(*signature_t)(_Args...);
+
+    _R operator()(_Args&&...args) {
+        return _callback(this, std::forward<_Args>(args)...);
     }
 
-    template <bool __apply_back = false, typename ..._Args>
-    auto apply(_Args&&...args) -> decltype(tuple_apply::apply<__apply_back>(_f, _params, std::forward<_Args>(args)...)) {
-        return tuple_apply::apply<__apply_back>(_f, _params, std::forward<_Args>(args)...);
+    _R apply(_Args&&...args) {
+        return _callback(this, std::forward<_Args>(args)...);
     }
-};
 
-template <typename _T, typename _R, typename ..._MemberArgs, typename ..._Params>
-class closure<_R (_T::*)(_MemberArgs...), _Params...> {
 public:
-    typedef _R (_T::*member)(_MemberArgs...);
+    template <typename _T, typename ..._Params>
+    class instance : public closure_t {
+    public:
+        typedef instance<_T, _Params...> instance_t;
+        typedef _R (_T::*member_t)(_Params..., _Args...);
 
-    struct functor {
-        functor(_T *obj, member f): _obj(obj), _f(f) {}
-        _T *_obj;
-        member _f;
-        template <typename ..._Args>
-        _R operator()(_Args&&...args) {
-            return (_obj->*_f)(std::forward<_Args>(args)...);
+    private:
+        struct proxy {
+            proxy(_T &obj) : _obj(obj) {}
+            proxy(_T &obj, member_t member) : _obj(obj), _member(member) {}
+            _T &_obj;
+            member_t _member;
+
+            template <typename ..._CallArgs>
+            _R operator()(_CallArgs&&...args) {
+                return (_obj.*_member)(std::forward<_CallArgs>(args)...);
+            }
+        };
+        
+        proxy _proxy;
+        std::tuple<_Params...> _params;
+
+        static _R functor_apply(closure_t *c, _Args&&...args) {
+            instance_t *p = static_cast<instance_t*>(c);
+            return tuple_apply::apply(p->_proxy._obj, p->_params, std::forward<_Args>(args)...);
         }
+
+        static _R member_apply(closure_t *c, _Args&&...args) {
+            instance_t *p = static_cast<instance_t*>(c);
+            return tuple_apply::apply(p->_proxy, p->_params, std::forward<_Args>(args)...);
+        }
+
+    public:
+        explicit instance(_T &obj, _Params&&...params) : 
+            closure_t(functor_apply), 
+            _proxy(obj), 
+            _params(std::forward<_Params>(params)...) {}
+        explicit instance(_T *obj, _Params&&...params) : 
+            closure_t(functor_apply), 
+            _proxy(*obj), 
+            _params(std::forward<_Params>(params)...) {}
+        explicit instance(_T &obj, member_t member, _Params&&...params) : 
+            closure_t(member_apply), 
+            _proxy(obj, member), 
+            _params(std::forward<_Params>(params)...) {}
+        explicit instance(_T *obj, member_t member, _Params&&...params) : 
+            closure_t(member_apply), 
+            _proxy(*obj, member), 
+            _params(std::forward<_Params>(params)...) {}
     };
-private:
-    functor _f;
-    std::tuple<_Params...> _params;
-public:
-    explicit closure(_T &obj, member f, _Params&&...params) : _f(&obj, f), _params(std::forward<_Params>(params)...) {}
-    explicit closure(_T *obj, member f, _Params&&...params) : _f(obj, f), _params(std::forward<_Params>(params)...) {}
 
-    template <bool __apply_back = false, typename ..._Args>
-    auto operator ()(_Args&&...args) -> decltype(tuple_apply::apply<__apply_back>(_f, _params, std::forward<_Args>(args)...)) {
-        return tuple_apply::apply<__apply_back>(_f, _params, std::forward<_Args>(args)...);
+    template <typename _F, typename ..._Params>
+    static instance<_F, _Params...> make(_F &f, _Params&&...args) {
+        return instance<_F, _Params...>(f, std::forward<_Params>(args)...);
     }
 
-    template <bool __apply_back = false, typename ..._Args>
-    auto apply(_Args&&...args) -> decltype(tuple_apply::apply<__apply_back>(_f, _params, std::forward<_Args>(args)...)) {
-        return tuple_apply::apply<__apply_back>(_f, _params, std::forward<_Args>(args)...);
+    template <typename _F, typename ..._Params>
+    static instance<_F, _Params...> make(_F *f, _Params&&...args) {
+        return instance<_F, _Params...>(f, std::forward<_Params>(args)...);
     }
+
+    template <typename _T, typename ..._Params>
+    static instance<_T, _Params...> make(_T &obj, typename instance<_T, _Params...>::member_t f, _Params&&...args) {
+        return instance<_T, _Params...>(obj, f, std::forward<_Params>(args)...);
+    }
+
+    template <typename _T, typename ..._Params>
+    static instance<_T, _Params...> make(_T *obj, typename instance<_T, _Params...>::member_t f, _Params&&...args) {
+        return instance<_T, _Params...>(obj, f, std::forward<_Params>(args)...);
+    }
+
 };
 
-template <typename _F, typename ..._Params>
-inline closure<_F, _Params...>
-the_closure(_F &f, _Params&&...params) {
-    return closure<_F, _Params...>(f, std::forward<_Params>(params)...);
-}
-
-template <typename _T, typename _R, typename ..._MemberArgs, typename ..._Params>
-inline closure<_R(_T::*)(_MemberArgs...), _Params...>
-the_closure(_T &obj, _R(_T::*func)(_MemberArgs...), _Params&&...params) {
-    return closure<_R(_T::*)(_MemberArgs...), _Params...>(obj, func, std::forward<_Params>(params)...);
-}
-
-}; // namespace ll end
+} // namespace ll end
 
 #endif
 

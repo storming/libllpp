@@ -28,23 +28,20 @@ struct foo {
 };
 
 struct B {
-    int dodo() {
-        cout << "kkkkkkkkkk" << endl;
+    int dodo(int magic) {
+        cout << "kkkkkkkkkk" << magic << endl;
         return 0;
     }
-    ll::signal<int()>::member<decltype(&B::dodo)> _slot;
+    ll::signal<int()>::slot<B, int> _slot;
 
-    B() : _slot(this, &B::dodo) {}
+    B() : _slot(this, &B::dodo, 3) {}
 };
 
 int main()
 {
     foo f;
     B b;
-    ll_member_slot(f.sig, B, dodo) ss(b, &B::dodo);
     f.sig.connect(b._slot);
-    //f.sig.connect(ll::pool::global(), b, &B::dodo);
     f.sig.emit();
-    //cout << &ll::internal::module::__modules << endl;
     return 0;
 }

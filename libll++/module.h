@@ -59,8 +59,8 @@ public:
     struct assember_init {
         template <typename ..._Params>
         static void assembe_init(modules_t &mm, _T &obj, _Params&&...params) {
-            static typename sig_init_t::template member<decltype(&_T::module_init), _Params...> slot(obj, &_T::module_init, std::forward<_Params>(params)...);
-            mm.sig_init.connect(slot);
+            static typename sig_init_t::template slot<_T, _Params...> s(obj, &_T::module_init, std::forward<_Params>(params)...);
+            mm.sig_init.connect(s);
         }
     };
 
@@ -75,8 +75,8 @@ public:
     struct assember_exit {
         template <typename ..._Params>
         static void assembe_exit(modules_t &mm, _T &obj, _Params&&...params) {
-            static typename sig_exit_t::template member<decltype(&_T::module_exit), _Params...> slot(obj, &_T::module_exit, std::forward<_Params>(params)...);
-            mm.sig_exit.connect(slot);
+            static typename sig_exit_t::template slot<_T, _Params...> s(obj, &_T::module_init, std::forward<_Params>(params)...);
+            mm.sig_exit.connect(s);
         }
     };
 
