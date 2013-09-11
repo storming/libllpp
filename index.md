@@ -13,6 +13,9 @@ libll++是我这段时间学习开发库，发布在：https://github.com/stormi
 2013-9-1
 
 ------------------------------------------------------------------------------------------------------------------------------------------
+##2013-9-10 内存发分配简史
+
+------------------------------------------------------------------------------------------------------------------------------------------
 ##2013-9-9 closure and lambda and tuple_apply
 
 记不清第一次接触closure这个词儿是什么时候了，不过应该是在学习某种脚本语言的时候看到的，lua、C#、AS3？这个单词的计算机类解释是“闭包”，
@@ -152,19 +155,69 @@ instance是必须传入的，class member也是必须的。但是其它的参数
 第一反应就是typelist，在参考了tuple的文档和代码后，我相信这是个很好的解决方案。完全是编译时刻的实现。tuple就是个
 typelist。
 
-但是，这里有个问题。我可以用tuple去存储context，但是怎么把他们传递给callback函数？我在code stack上找到一个实现，
-相当的有趣。利用编译器递归展开tuple来完成参数的传递。其实这是2组参数，捕获参数和调用参数。比如：
+	template <typename _Sig, typename ..._Params>
+	struct closure;
+	
+	template <typename _R, typename ..._Args, typename ..._Params>
+	struct closure<_R(_Args...), Params...> {
+		tuple<_Params...> _captures;
+	};
 
-	int call_param(int a, int b);
-	int real_param(int c, int d, int a, int b);
+上面的代码就是我想像中的closure的最初原型。_R和_Args构成了函数签名，_Params则是closure捕获参数列表。这跟g++的
+lambda内联类比较类似，不同的是它有语言级支持，可以单独的声明捕获变量，而我的closure只能用tuple。
 
-closure捕获了c和d，并且保存起来，至于说c和d的生命周期不是closure要考虑的，这是程序员要考虑的。在统一签名
-(int a, int b)的情况下，closure把c和d填补到a和b前面，完成实际函数调用。这跟bind的实现差不多，但是一个
-closure完成了function和bind的功能。最关键的是我希望内存强控，关于了libll++的内存理念在后面会提到，这真传统
-c++是完全不同的。呵呵，至少我不是个传统c++程序员，我没有传统。把绑定参数放到前面和后面再技术上都是可行的，
-之所以放到前面是考虑到变参和默认值等多种因素。
+但是，这里有个问题。我可以用tuple去存储捕获的变量，但是怎么把他们传递给callback函数？我在code stack上找到一个实现，
+相当的有趣，我把它修改了一下并命名为tuple_apply放到了这个工程里。它的原型如下：
 
-对于c++封装来说，我觉得我又制造了个轮子。我是不值得提倡的，唯一可以安慰的是这个轮子的制造时有目的的。
+	template<bool __back = false, typename _F, typename _T, typename ..._Args>
+        static inline auto apply(_F && f, _T && t, _Args&&...args);
+
+_F是个functor， _T是个tuple，_Args是调用的参数。这个函数的功能是调用_F，并不tuple中的元素展开到_Args的前面或者后面。
+比如：
+
+	int foo(int a, int b, int c, int d);
+	tuple<int, int> t(1, 2);
+	tuple_apply::apply(foo, t, 3, 4);
+
+实际的调用效果等同于`foo(1, 2, 3, 4)`。tuple_apply的设计核心就是定义一个语法级的递归，然后操纵编译器进行递归。
+所有的typelist类似的编程基本都遵循这个方式。这很需要点空间想象能力，而且稍不注意就会把编译器搞得死循环或者
+直接挂掉。有些文章把这种编程叫做meta program。
+
+现在我们用tuple解决了参数捕获问题，用tuple_apply解决了参数传递问题。尽管这种方式看上去没有bind那么灵活，但是
+在功能上是足够用了。下面是closure的使用例子：
+
+	struct foo {
+		void operator()(int &a, int b) {
+			return a += b;
+		}
+		void sub()(int &a, int b) {
+			return a -= b;
+		}
+	};
+	
+	int main()
+	{
+		foo f;
+		int sum = 0;
+		closure<void(int)>::instance<foo, int&> c(f, sum);
+		c(1), c(2);
+		
+		closure<void(int)>::instance<foo, int&> c2(f, &foo::sub, sum);
+		c2(1), c2(2);
+
+		auto c3 = closure<void(int)>::make(f, sum);
+		c3(1), c3(2);
+
+		auto c4 = closure<void(int)>::make(f, &foo::sub, sum);
+		c4(1), c4(2);
+	}
+
+在这里我把所有捕获的变量展开在函数调用的列表的前部，这主要是考虑函数参数的默认值和变参等因素。closure实现
+的功能与function和bind类似，在编程技巧上远远比不上bind。但是closure很简单，一个closure完成了类似function和
+bind的组合功能。最关键的是我希望内存强控，关于了libll++的内存理念在后面会提到，这真传统
+c++是完全不同的。呵呵，至少我不是个传统c++程序员，我没有传统。
+
+对于c++封装来说，我觉得我又制造了个轮子。是不值得提倡的，唯一可以安慰的是这个轮子的制造时有目的的。
 
 ------------------------------------------------------------------------------------------------------------------------------------------
 ##2013-9-3 libll++的list实现
