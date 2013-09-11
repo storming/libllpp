@@ -13,6 +13,95 @@ libll++是我这段时间学习开发库，发布在：https://github.com/stormi
 2013-9-1
 
 ------------------------------------------------------------------------------------------------------------------------------------------
+##2013-9-11 slot and signal and rcode and module manager
+
+用过QT的程序员都会对它的slot and signal机制有很深刻的印象。
+
+我对slot and signal的理解是这样的：signal是个函数签名，定义了emit时需要传递的参数列表。slot本质上是个signal的一个具体实现。signal定义
+了一个callback，slot实现了一个callback。把一个signal连接到slot的过程叫做connect。一个signal可以连接多个slot和signal，一个slot也可以连接多个
+signal。简单的说就是signal定义了一个callback，并且有个数据结构（链表或者map）来引用相关的slot。而slot则是实现callback的具体函数或closure。
+当signal emit的时候，则是把它引用的所有的slot都调用一遍，或者叫广播。
+
+事件驱动的实现方式一般有两种，一种是消息队列(例：windows)，一种是回调(例：gnome)。slot and signal在本质上也是一种回调。我个人感觉还是消息队列比较
+稳妥一些（如果有这么个队列机制的话），callback则具有更好的可移植性和效率。其它一些语言环境也有类似的概念，比如AS3的addEventListener。不过，
+callback或者类似的封装管理都需要一个妥善的规划，否则就会出现event满天飞，程序员自己都很难确定程序的实际运行路径。
+
+
+libll++用closure封装了callback，但是还缺少一个callback的管理机制，于是我把slot and signal概念引入到libll++中。一些类库使用interface和虚函数
+的方式来设计事件驱动，比如说ACE的ACE_Reactor和ACE_TimerManager。我感觉这种实现方式耦合度太强且灵活性不足，比如前面提到的socket与timer的
+那个例子，socket的不同时期timer的作用是不同的，插拔不同的slot到同一个signal上，会让代码显得更加清晰，耦合度更低且可拆卸。
+
+libll++的slotsig设计秉承一贯的风格，尽量的简单实用和数据植入模式。直到现在libll++还没有提到它的内存管理规划，这导致在内存管理规划提出之前
+的所有组件只能是全植入模式，也就是数据结构管理节点包含在数据里。signal connect signal，这会导致一个树形的广播关系，或者叫树广播。这种机制
+很强大，特别是在UI系统里。不过这么强大的东西也很危险，如果规划的不好会反复的无意义的调用slot甚至导致无限递归。在这里的slotsig把这个功能去掉
+了。
+
+libll++的signal有2种，normal signal和once signal。
+
+normal signal使用clist来管理所connect的slot。normal signal的slot是clist_entry和closure
+的混合体，简单的说这个slot是个closure，它能够connect到signal上，它的构造函数参数跟closure完全一样。在95%的情况下，我们把slot声明称类成员就
+足够用了。如果想动态new一个，那么你需要自己管理slot的内存，slotsig不负责内存方面的管理。
+
+once signal是个简化的signal，它只能connect一次，也就是说它只保存一个closure，如果要connect新的必须要disconnect旧的。简单的说它就只是个
+closure指针。尽管它很简单，但是在服务器的事件驱动应用中却占有绝大多数的出场率。
+
+无论是哪种signal，它首先是个函数签名。
+
+	template <typename signature, bool __once = false>
+	class signal;
+	
+	template <bool __once, typename ..._Args>
+	class signal<int(_Args...), __once> {}
+	
+上面的示例是signal的原型。__once说明这个signal是不是个once signal。可以看到，slotsig的signal定义了签名的返回值，是个`int`。
+对于normal signal来说，它实质上是个callback list，这个返回值非常难于处理。当然，我们可以写个模板函数来遍历调用callback，然后传入一个
+lambda之类的东西去接收返回值，但是lambda不能影响程序流程。
+
+经过反复的思考，最终我把slot的返回类型定义为int。首先，int类型作为返回对于程序运行来说没有任何开销，一般这个返回值会被放到寄存器中返回
+（x86就是eax寄存器）。其次，从这个节点开始libll++的函数使用统一的错误返回和错误处理方式。
+
+libll++有错误状态返回的函数（包括类成员函数）均使用int作为返回类型。这个int，在libll++中称之为rcode(result code)。`rcode == 0`，
+代表函数完全成功，无任何歧义。`rcode < 0`，代表函数失败，rcode的值是错误代码，相当于errno。`rcode > 0`，则是未定义的保留，可能是
+其它信息，可能是某种警告和暗示，但是，不是错误。rcode的定义在`rc.h`中。
+
+normal signal的emit函数现在的实现方式是如果callback返回小于0就返回。不久的以后他可能会是个模板，不如说传入一个lambda通过callback的返回值，
+来返回一个int来决定是否继续遍历下去。
+
+在现在的libll++中once signal的应用面是非常广泛的。不过，也有个normal signal的实例，module manager。这个模块管理器不太值得提倡，写它
+纯粹是一种游戏心态。一个较大型的应用（呵呵比如说libll++，最后它不会很小的）经常会由很多个模块组成，这些模块或强或弱的有着一些依赖关系。
+在程序初始化部分，我们需要按照正确的顺序逐个模块初始化，如果不成功就需要倒退回去。这种代码很烦人，也很容易出现疏漏。在c++中，我们经常用到
+单例模式，一般都是滞后构造来保障正确的初始化关系。对于使用率超高的一些单例，那个NULL判断或者函数里隐含的static初始化判断看上去令人不爽。
+我们希望程序启动的时候，能够简单的正确的直接的初始化。
+
+在看到linux kernel的module管理后，我就也想有这么个机制。但是，很不幸，关键的问题是这不是个c++语言范畴，这是个连接器工作方式范畴，
+简单的说这是未定义。在实际的编译工具链里这可能更复杂，collect2和ar之类的工具都会产生影响。如果用c++的方式来说，一个`a.cpp`和`b.cpp`都
+有一个静态构造，那么是先调用`a.cpp`的还是先调用`b.cpp`的静态构造？这个不确定。我不想超越语言的界限，更低层的去干预gcc。
+
+但是，从多年来使用gcc的经验来看，某些版本这个调用顺序与工程中源文件顺序相符，有些版本则是倒序，但是还没出现过随机调用的情况。只要不是
+随机调用，这个事情就好办。正序和倒序我们可以通过程序直接推演出来，module.cpp和module_end.cpp完成了这个推演过程。
+
+
+这样我们就有了一个不太值得提倡的模块管理器，每个模块在自己的源文件里初始化，并且通过源文件顺序来保障初始化顺序。
+
+	struct foo {
+		int module_init() {
+		}
+
+		int module_exit() {
+		}
+	}
+	ll_module(foo);
+
+那么这个module管理器的本质是什么呐？module manager有2个signal，init_sig和exit_sig。ll_module是个宏，它把foo的2个成员函数以slot的
+方式通过静态构造装配到signal上。
+
+在libll++中封装slotsig不是心血来潮，是经过反复思考的结果。关键不在于callback管理，也不在于slotsig多么方便多么高级多么好，对此
+我根本没有感觉。关键在于libll++的内存管理风格需要这么一个机制，在以后会提到slotsig在libll++内存管理风格中幕后所担任的重要角色。
+
+欲知后事如何，请听下回分解:)
+
+
+------------------------------------------------------------------------------------------------------------------------------------------
 ##2013-9-9 closure and lambda and tuple_apply
 
 记不清第一次接触closure这个词儿是什么时候了，不过应该是在学习某种脚本语言的时候看到的，lua、C#、AS3？这个单词的计算机类解释是“闭包”，
