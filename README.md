@@ -1,1 +1,1 @@
-http://storming.github.io/libllpp/
+blog @ http://storming.github.io/libllpp/
