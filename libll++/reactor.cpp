@@ -151,15 +151,13 @@ int reactor::modify(int fd, int flags)
     return ok;
 }
 
-int reactor::loop(time &t)
+int reactor::loop(timeval tv)
 {
-    timeval timeout = t.get_msec();
-
     int nfds, flags;
     struct epoll_event *event;
     io *io;
 
-    nfds = epoll_wait(_fd, _events, _maxevents, timeout);
+    nfds = epoll_wait(_fd, _events, _maxevents, time_precision_msec::timeval2value(tv));
 
     if (ll_unlikely(nfds == -1)) {
         if (ll_likely(errno == EINTR)) {

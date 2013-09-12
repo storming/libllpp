@@ -37,11 +37,17 @@ struct B {
     B() : _slot(this, &B::dodo, 3) {}
 };
 
+void walk(void sum1(int)) 
+{
+    sum1(0);
+}
+
 int main()
 {
     foo f;
     B b;
     f.sig.connect(b._slot);
     f.sig.emit();
+
     return 0;
 }

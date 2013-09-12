@@ -107,6 +107,24 @@ public:
 
 };
 
+struct time_precision_msec {
+    static timeval adjust(timeval tv) {
+        return tv / (time::usecs_of_second / time::msecs_of_second) * (time::usecs_of_second / time::msecs_of_second);
+    }
+
+    static timeval timeval2value(timeval tv) {
+        return tv / (time::usecs_of_second / time::msecs_of_second);
+    }
+
+    static timeval value2timeval(timeval tv) {
+        return tv * (time::usecs_of_second / time::msecs_of_second);
+    }
+
+    static timeval now() {
+        return adjust(time::now());
+    }
+};
+
 class time_trace : public time {
 public:
     time_trace() : time(now()) {}

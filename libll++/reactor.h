@@ -67,7 +67,7 @@ public:
     int open(int fd, unsigned flags, io::closure_t *handler = nullptr);
     int close(int fd, bool linger = false);
     int modify(int fd, int flags);
-    int loop(time &t);
+    int loop(timeval tv);
 
     static reactor *instance() {
         static reactor inst(pool::global());
