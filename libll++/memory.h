@@ -79,6 +79,12 @@ struct factory<_T, caches> {
     }
 };
 
+class malloctor {
+public:
+    static void *alloc(size_t size);
+    static void free();
+};
+
 template <typename _T>
 struct factory<_T, void> {
 public:
@@ -170,7 +176,12 @@ inline _T *create(_Args &&... args) {
 
 template <typename _T>
 inline void destroy(_T *p) {
-    factory<_T, void>::destroy(p);
+    p->~_T();
+}
+
+template <typename _Allocator, typename _T, typename ..._Args>
+inline _T *_new(_Allocator *allocator, _Args&&...args) {
+    return allocator->_new<_T>(std::forward<_Args>(args)...);
 }
 
 }

@@ -14,12 +14,12 @@ inline timeval timer::get_key(timer *t)
     return t->_expires;
 }
 
-/* timer_manager_base */
-timer_manager_base::timer_manager_base(pool *pool) : _cache(pool), _counter()
+/* timer_manager */
+timer_manager::timer_manager(pool *pool) : _cache(pool), _counter()
 {
 }
 
-inline void timer_manager_base::update_seq(timer *timer)
+inline void timer_manager::update_seq(timer *timer)
 {
     if (++_counter == 0) {
         _counter = 1;
@@ -27,7 +27,7 @@ inline void timer_manager_base::update_seq(timer *timer)
     timer->_seq = _counter;
 }
 
-timer *timer_manager_base::schedule(timeval expires, timeval interval, timer::closure_t *handler)
+timer *timer_manager::schedule_i(timeval expires, timeval interval, timer::closure_t *handler)
 {
     timer *timer = ll::create<timer_impl>(&_cache, expires, interval);
     _map.insert(timer);
@@ -38,7 +38,7 @@ timer *timer_manager_base::schedule(timeval expires, timeval interval, timer::cl
     return timer;
 }
 
-void timer_manager_base::modify(timer *timer, timeval expires, timeval interval)
+void timer_manager::modify_i(timer *timer, timeval expires, timeval interval)
 {
     timer->_interval = interval;
     if (timer->_expires != expires) {
@@ -49,7 +49,7 @@ void timer_manager_base::modify(timer *timer, timeval expires, timeval interval)
     }
 }
 
-void timer_manager_base::remove(timer *timer)
+void timer_manager::remove(timer *timer)
 {
     _map.remove(timer);
     timer->disconnect();
@@ -57,7 +57,7 @@ void timer_manager_base::remove(timer *timer)
     ll::destroy(static_cast<timer_impl*>(timer), &_cache);
 }
 
-timeval timer_manager_base::loop(timeval curtime)
+timeval timer_manager::loop_i(timeval curtime)
 {
     while (1) {
         timer *timer = _map.front();
@@ -71,7 +71,7 @@ timeval timer_manager_base::loop(timeval curtime)
     }
 }
 
-inline void timer_manager_base::dispatch(timer *timer, timeval curtime)
+inline void timer_manager::dispatch(timer *timer, timeval curtime)
 {
     unsigned seq = timer->_seq;
     int n = timer->emit(*timer, curtime);

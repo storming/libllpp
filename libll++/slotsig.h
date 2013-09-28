@@ -79,28 +79,29 @@ struct slotsig_helper {
             }
         }
     
-        int emit(_Args&&...args) {
+        template <typename ..._Args2>
+        int emit(_Args2&&...args) {
             int n;
             auto end = _list.end();
             for (auto it = _list.begin(); it != end; ++it) {
-                if ((n = it.pointer()->_closure->apply(std::forward<_Args>(args)...)) < 0) {
+                if ((n = it.pointer()->_closure->apply(std::forward<_Args2>(args)...)) < 0) {
                     return n;
                 }
             }
             return 0;
         }
     
-        int remit(_Args&&...args) {
+        template <typename ..._Args2>
+        int remit(_Args2&&...args) {
             int n;
             auto end = _list.rend();
             for (auto it = _list.rbegin(); it != end; --it) {
-                if ((n = it.pointer()->_closure->apply(std::forward<_Args>(args)...)) < 0) {
+                if ((n = it.pointer()->_closure->apply(std::forward<_Args2>(args)...)) < 0) {
                     return n;
                 }
             }
             return 0;
         }
-    
     };
     
     class once_policy {
@@ -126,9 +127,10 @@ struct slotsig_helper {
             _closure = nullptr;
         }
     
-        int emit(_Args...args) {
+        template <typename ..._Args2>
+        int emit(_Args2&&...args) {
             if (_closure) {
-                return (*_closure)(std::forward<_Args>(args)...);
+                return (*_closure)(std::forward<_Args2>(args)...);
             }
             return 0;
         }

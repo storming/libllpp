@@ -15,6 +15,10 @@ struct foo {
     void dodo(int &n, int m) {
         cout << "dodo:" << n++ + m << endl;
     }
+
+    virtual void dodo2() {
+        cout << "foo::dodo2" << endl;
+    }
 };
 
 int main()
@@ -30,9 +34,16 @@ int main()
     c = &c5;
     (*c)(100);(*c)(100);
 
+
     ll::closure<void(int)>::instance<foo, int&> c6(f, &foo::dodo, n);
+    
     c = &c6;
     (*c)(100);(*c)(100);
+    
+    int m = 200;
+    c->apply(m);
 
     return 0;
 }
+
+

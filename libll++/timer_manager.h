@@ -9,7 +9,7 @@
 namespace ll {
 
 class timer : public signal<int(timer&, timeval), true> {
-    friend class timer_manager_base;
+    friend class timer_manager;
 private:
     map_entry _entry;
     timeval _expires;
@@ -20,7 +20,7 @@ public:
     static timeval get_key(timer *t);
 };
 
-class timer_manager_base {
+class timer_manager {
 private:
     ll_map(timeval, timer, _entry) _map;
     typed_cache<timer> _cache;
@@ -28,48 +28,47 @@ private:
     void update_seq(timer *timer);
     void dispatch(timer *timer, timeval curtime);
 
-protected:
-    timer_manager_base(pool *pool);
-    timer *schedule(timeval expires, timeval interval = 0, timer::closure_t *handler = nullptr);
-    void modify(timer *timer, timeval expires, timeval interval = 0);
-    void remove(timer *timer);
-    timeval loop(timeval curtime);
-};
+    timer *schedule_i(timeval expires, timeval interval, timer::closure_t *handler);
+    void modify_i(timer *timer, timeval expires, timeval interval);
+    timeval loop_i(timeval curtime);
 
-template <typename _Precision>
-class timer_manager_ex : public timer_manager_base {
 public:
-    timer_manager_ex(pool *pool) : timer_manager_base(pool) {}
+    timer_manager(pool *pool);
 
+    template <typename _Precision = time_precision_msec>
     timer *schedule(timeval expires, timeval interval = 0, timer::closure_t *handler = nullptr) {
-        return timer_manager_base::schedule(_Precision::adjust(expires), _Precision::adjust(interval), handler);
+        return schedule_i(_Precision::adjust(expires), _Precision::adjust(interval), handler);
     }
 
+    template <typename _Precision = time_precision_msec>
     timer *schedule_r(timeval expires, timeval interval = 0, timer::closure_t *handler = nullptr) {
-        return timer_manager_base::schedule(_Precision::now() + _Precision::adjust(expires), _Precision::adjust(interval), handler);
+        return schedule_i(_Precision::now() + _Precision::adjust(expires), _Precision::adjust(interval), handler);
     }
 
+    template <typename _Precision = time_precision_msec>
     void modify(timer *timer, timeval expires, timeval interval = 0) {
-        timer_manager_base::modify(timer, _Precision::adjust(expires), _Precision::adjust(interval));
+        modify_i(timer, _Precision::adjust(expires), _Precision::adjust(interval));
     }
 
+    template <typename _Precision = time_precision_msec>
     void modify_r(timer *timer, timeval expires, timeval interval = 0) {
-        timer_manager_base::modify(timer, _Precision::now() + _Precision::adjust(expires), _Precision::adjust(interval));
+        modify_i(timer, _Precision::now() + _Precision::adjust(expires), _Precision::adjust(interval));
     }
 
+    template <typename _Precision = time_precision_msec>
     timeval loop() {
         timeval cur = _Precision::now();
         while (1) {
-            timeval t = timer_manager_base::loop(cur);
+            timeval t = loop_i(cur);
             cur = _Precision::now();
             if (t > cur) {
                 return cur - t;
             }
         }
     }
-};
 
-using timer_manager = timer_manager_ex<time_precision_msec>;
+    void remove(timer *timer);
+};
 
 }
 

@@ -40,7 +40,7 @@ public:
     }
 
     int close() {
-        ll_failed_return(close(_fd));
+        ll_failed_return(file_io::close(_fd));
         _fd = -1;
         return ok;
     }

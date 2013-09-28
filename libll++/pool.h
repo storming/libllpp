@@ -3,6 +3,7 @@
 
 #include <cstring>
 #include <cstdarg>
+#include <utility>
 
 #include "list.h"
 #include "friend.h"
@@ -47,6 +48,12 @@ public:
         void *p = alloc(size);
         memset(p, 0, size);
         return p;
+    }
+
+    template <typename _T, typename ..._Args>
+    _T *_new(_Args&&...args) {
+        void *p = alloc(sizeof(_T));
+        return new(p) _T(std::forward<_Args>(args)...);
     }
 
     page_allocator *allocator() {
