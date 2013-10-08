@@ -5,6 +5,14 @@
 
 namespace ll {
 
+template <typename _T>
+struct member_of;
+
+template <typename _T, typename _U>
+struct member_of<_T _U::*> {
+    typedef _T type;
+    typedef _U clss_type;
+};
 
 /* typeof_member */
 template <typename _T, typename _C>
@@ -57,7 +65,7 @@ struct class_name {                                                             
                                                                                                                                                \
     struct AmbiguitySeed { char member; };                                                                                                     \
                                                                                                                                                \
-    struct has {                                                                                                                               \
+    struct _has {                                                                                                                              \
         template<typename C> static char ((&f(decltype(&C::value))))[1];                                                                       \
         template<typename C> static char ((&f(...)))[2];                                                                                       \
                                                                                                                                                \
@@ -70,61 +78,64 @@ struct class_name {                                                             
             , "Member name specified in AmbiguitySeed is different from member name specified in Alias, "                                      \
               "or wrong Alias/AmbiguitySeed has been specified.");                                                                             \
                                                                                                                                                \
-        static bool const value = sizeof(f<alias_t>(0)) == 2;                                                                                  \
+        static constexpr bool value = sizeof(f<alias_t>(0)) == 2;                                                                              \
     };                                                                                                                                         \
+    using has = std::integral_constant<bool, _has::value>;                                                                                     \
                                                                                                                                                \
-    struct has_variable {                                                                                                                      \
+    struct _has_variable {                                                                                                                     \
         template<typename A, typename = std::true_type>                                                                                        \
         struct checker: std::false_type {};                                                                                                    \
                                                                                                                                                \
         template<typename A>                                                                                                                   \
         struct checker<A, std::integral_constant<bool, !std::is_member_function_pointer<decltype(&A::member)>::value>>: std::true_type {};     \
-        static bool const value = checker<T>::value;                                                                                           \
+        static constexpr bool value = checker<T>::value;                                                                                       \
     };                                                                                                                                         \
+    using has_variable = std::integral_constant<bool, _has_variable::value>;                                                                   \
                                                                                                                                                \
-    struct has_class {                                                                                                                         \
+    struct _has_class {                                                                                                                        \
         template<typename A, typename = std::true_type>                                                                                        \
         struct checker: std::false_type {};                                                                                                    \
                                                                                                                                                \
         template<typename A>                                                                                                                   \
         struct checker<A, std::integral_constant<bool, std::is_class<typename got_type<typename A::member>::type>::value>>: std::true_type {}; \
                                                                                                                                                \
-        static bool const value = checker<T>::value;                                                                                           \
+        static constexpr bool value = checker<T>::value;                                                                                       \
     };                                                                                                                                         \
+    using has_class = std::integral_constant<bool, _has_class::value>;                                                                         \
                                                                                                                                                \
-    struct has_union {                                                                                                                         \
+    struct _has_union {                                                                                                                        \
         template<typename A, typename = std::true_type>                                                                                        \
         struct checker: std::false_type {};                                                                                                    \
                                                                                                                                                \
         template<typename A>                                                                                                                   \
         struct checker<A, std::integral_constant<bool, std::is_union<typename got_type<typename A::member>::type>::value>>: std::true_type {}; \
                                                                                                                                                \
-        static bool const value = checker<T>::value;                                                                                           \
+        static constexpr bool value = checker<T>::value;                                                                                       \
     };                                                                                                                                         \
+    using has_union = std::integral_constant<bool, _has_union::value>;                                                                         \
                                                                                                                                                \
-    struct has_enum {                                                                                                                          \
+    struct _has_enum {                                                                                                                         \
         template<typename A, typename = std::true_type>                                                                                        \
         struct checker: std::false_type {};                                                                                                    \
                                                                                                                                                \
         template<typename A>                                                                                                                   \
         struct checker<A, std::integral_constant<bool, std::is_enum<typename got_type<typename A::member>::type>::value>>: std::true_type {};  \
                                                                                                                                                \
-        static bool const value = checker<T>::value;                                                                                           \
+        static constexpr bool value = checker<T>::value;                                                                                       \
     };                                                                                                                                         \
+    using has_enum = std::integral_constant<bool, _has_enum::value>;                                                                           \
                                                                                                                                                \
-    struct has_function {                                                                                                                      \
-        static bool const value = has::value &&                                                                                                \
+    using has_function = std::integral_constant<bool, has::value &&                                                                            \
             !has_variable::value &&                                                                                                            \
             !has_class::value &&                                                                                                               \
             !has_union::value &&                                                                                                               \
-            !has_enum::value;                                                                                                                  \
-    };                                                                                                                                         \
+            !has_enum::value>;                                                                                                                 \
                                                                                                                                                \
     template <typename A>                                                                                                                      \
-    struct has_signature;                                                                                                                      \
+    struct _has_signature;                                                                                                                     \
                                                                                                                                                \
     template <typename R, typename ...Args>                                                                                                    \
-    struct has_signature<R(Args...)> {                                                                                                         \
+    struct _has_signature<R(Args...)> {                                                                                                        \
         template<typename A, A>                                                                                                                \
         struct sig_check : std::true_type {};                                                                                                  \
                                                                                                                                                \
@@ -134,8 +145,14 @@ struct class_name {                                                             
         template<typename A>                                                                                                                   \
         struct checker<A, std::integral_constant<bool, sig_check<R (A::*)(Args...), &A::member>::value>> : std::true_type {};                  \
                                                                                                                                                \
-        static const bool value = checker<T>::value;                                                                                           \
+        static constexpr bool value = checker<T>::value;                                                                                       \
     };                                                                                                                                         \
+                                                                                                                                               \
+    template <typename A>                                                                                                                      \
+    struct has_signature;                                                                                                                      \
+                                                                                                                                               \
+    template <typename R, typename ...Args>                                                                                                    \
+    struct has_signature<R(Args...)> : std::integral_constant<bool, _has_signature<R(Args...)>::value> {};                                     \
 }
 
 };

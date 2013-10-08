@@ -21,12 +21,12 @@ public:
     static constexpr unsigned poll_open  = (1 << 4);
     static constexpr unsigned poll_close = (1 << 5);
 
-    class io : public file_io, public signal<int(io&, int), true> {
+    class io : public file_io, public signal<int(io&, int), mallocator, true> {
         friend class reactor;
     private:
         void deattch();
     public:
-        io() : file_io(), signal<int(io&, int), true>() {}
+        io() : file_io(), signal<int(io&, int), mallocator, true>() {}
     };
 
 private:
@@ -64,7 +64,7 @@ public:
         return _maxevents;
     }
 
-    int open(int fd, unsigned flags, io::closure_t *handler = nullptr);
+    int open(int fd, unsigned flags);
     int close(int fd, bool linger = false);
     int modify(int fd, int flags);
     int loop(timeval tv);

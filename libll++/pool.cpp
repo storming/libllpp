@@ -48,6 +48,7 @@ pool *pool::create(pool *parent, page_allocator *allocator)
     p->_allocator = allocator;
     p->_active = p->_self = pg;
     p->_children.init();
+    p->_destroy_list.init();
     pg->firstp = p->_firstp = (char *)p + ll_align_default(sizeof(pool));
     return p;
 }
@@ -71,12 +72,22 @@ pool *pool::create(page_allocator *allocator)
     return p;
 }
 
+inline void pool::emit_destroy_callback()
+{
+    stub *s;
+    while ((s = _destroy_list.pop_front())) {
+        s->_closure->apply(*this);
+    }
+}
+
 void pool::destroy(pool *p)
 {
     pool *child;
     while ((child = static_cast<pool*>(p->_children.front()))) {
         destroy(child);
     }
+
+    p->emit_destroy_callback();
 
     if (p->_parent) {
         pool_list_t::remove(p);
@@ -101,6 +112,7 @@ void pool::clear()
         destroy(child);
     }
 
+    emit_destroy_callback();
 
     page *tmp;
     page *pg = _active = _self;

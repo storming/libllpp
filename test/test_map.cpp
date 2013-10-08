@@ -17,8 +17,6 @@ struct foo {
     }
 };
 
-typedef ll::factory_bind<foo> foo_impl;
-
 struct foo2 {
 
 };
@@ -42,7 +40,7 @@ struct foo4 : foo3 {
 };
 int main()
 {
-    ll_map(unsigned, foo_impl, _entry) map;
+    ll_map(unsigned, foo, _entry) map;
     for (unsigned i = 0; i < 10; i++) {
         map.probe(i, nullptr, ll::pool::global());
     }
@@ -61,16 +59,16 @@ int main()
     }
 
     cout << "====" << endl;
-    map.insert<>(ll::create<foo_impl>(ll::pool::global(), 5, 1));
-    foo_impl *elm9 = map.insert<false>(ll::create<foo_impl>(ll::pool::global(), 9, 1));
+    map.insert<>(ll::_new<foo>(ll::pool::global(), 5, 1));
+    foo *elm9 = map.insert<false>(ll::_new<foo>(ll::pool::global(), 9, 1));
 
     for (auto &obj : map) {
         cout << obj._key << " " << obj._flag << endl;
     }
 
     cout << "====" << endl;
-    map.replace(map.get(4), ll::create<foo_impl>(ll::pool::global(), 4, 1));
-    map.replace(ll::create<foo_impl>(ll::pool::global(), 6, 1));
+    map.replace(map.get(4), ll::_new<foo>(ll::pool::global(), 4, 1));
+    map.replace(ll::_new<foo>(ll::pool::global(), 6, 1));
     for (auto &obj : map) {
         cout << obj._key << " " << obj._flag << endl;
     }

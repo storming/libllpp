@@ -11,6 +11,7 @@ struct A {
 
 struct B : A {
 };
+
 MEMBER_CHECKER_DECL(check_foo, foo);
 
 int main() 

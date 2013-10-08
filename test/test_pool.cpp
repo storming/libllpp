@@ -5,6 +5,9 @@
 using std::cout;
 using std::endl;
 
+void bye(ll::pool&) {
+    cout << "bye" << endl;
+}
 
 int main()
 {
@@ -19,6 +22,7 @@ int main()
     } while (0);
 
     ll::pool *pool = ll::pool::create(ll::pool::global());
+    pool->connect(bye);
 
     do {
         ll::time_trace t;

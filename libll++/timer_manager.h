@@ -23,7 +23,7 @@ public:
 class timer_manager {
 private:
     ll_map(timeval, timer, _entry) _map;
-    typed_cache<timer> _cache;
+    cache *_cache;
     unsigned _counter;
     void update_seq(timer *timer);
     void dispatch(timer *timer, timeval curtime);

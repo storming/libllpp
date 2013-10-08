@@ -33,7 +33,7 @@ namespace hashmap_helper { // begin namespace hashmap_helper
         typename _Base,
         typename _Entry,
         _Entry _Base::*__field,
-        typename _Factory,
+        typename _ElmAllocator,
         typename _Allocator,
         typename _Hash,
         typename _Compare,
@@ -49,8 +49,7 @@ namespace hashmap_helper { // begin namespace hashmap_helper
         typedef _Key                                key_t;
         typedef _Base                               base_t;
         typedef _Entry                              entry_t;
-        typedef _Factory                            factory_t;
-        typedef typename factory_t::allocator_t     factory_allocator_t;
+        typedef _ElmAllocator                       elm_allocator_t;
         typedef _Allocator                          allocator_t;
         typedef list<base_t, entry_t, __field>      list_t;
         typedef typename list_t::iterator           list_iterator_t;
@@ -104,8 +103,8 @@ namespace hashmap_helper { // begin namespace hashmap_helper
         template <typename _AEntry = entry_t, bool = _AEntry::cache_hash>
         struct create_policy {
             template <typename ...Args>
-            static type_t *create(unsigned hash, key_t key, factory_allocator_t *allocator, Args &&... args) {
-                type_t *elm = ll::create<type_t, factory_t>(allocator, key, std::forward<Args>(args)...);
+            static type_t *create(unsigned hash, key_t key, elm_allocator_t *allocator, Args &&... args) {
+                type_t *elm = _new<type_t>(allocator, key, std::forward<Args>(args)...);
                 (elm->*__field)._hash = hash;
                 return elm;
             }
@@ -114,8 +113,8 @@ namespace hashmap_helper { // begin namespace hashmap_helper
         template <typename _AEntry>
         struct create_policy<_AEntry, false> {
             template <typename ...Args>
-            static type_t *create(unsigned hash, key_t key, factory_allocator_t *allocator, Args &&... args) {
-                return ll::create<type_t, factory_t>(allocator, key, std::forward<Args>(args)...);
+            static type_t *create(unsigned hash, key_t key, elm_allocator_t *allocator, Args &&... args) {
+                return _new<type_t>(allocator, key, std::forward<Args>(args)...);
             }
         };
 
@@ -400,12 +399,12 @@ namespace hashmap_helper { // begin namespace hashmap_helper
                 }
             }
 
-            void clear(factory_allocator_t *allocator) {
+            void clear(elm_allocator_t *allocator) {
                 list_t *list = _array;
                 type_t *elm;
                 for (unsigned i = 0; i <= _capacity; i++, list++) {
                     while ((elm = static_cast<type_t*>(list->pop_front()))) {
-                        destroy<type_t, factory_t>(elm, allocator);
+                        _delete<type_t>(allocator, elm);
                     }
                 }
                 _count = 0;
@@ -432,7 +431,7 @@ namespace hashmap_helper { // begin namespace hashmap_helper
             }
 
             template <typename ...Args>
-            type_t *probe(key_t key, int *flag, factory_allocator_t *allocator, Args &&... args) {
+            type_t *probe(key_t key, int *flag, elm_allocator_t *allocator, Args &&... args) {
                 unsigned hash = hash_make_t::make(key);
                 unsigned slot = hash & _capacity;
                 list_t *list = _array + slot;
@@ -518,14 +517,14 @@ template <
     typename _Entry,
     _Entry _Base::*__field,
     typename _Allocator = pool,
-    typename _Factory = typename factory_of<_T>::type,
+    typename _ElmAllocator = pool,
     typename _Hash = hash<_Key>,
     typename _Compare = equal_compare<_Key>,
     typename _GetKey = _T>
-class hashmap: public hashmap_helper::impl<_Key, _T, _Base, _Entry, __field, _Factory, _Allocator, _Hash, _Compare, _GetKey>::map {
+class hashmap: public hashmap_helper::impl<_Key, _T, _Base, _Entry, __field, _ElmAllocator, _Allocator, _Hash, _Compare, _GetKey>::map {
 public:
     hashmap(_Allocator *allocator, unsigned initsize = 32) : 
-        hashmap_helper::impl<_Key, _T, _Base, _Entry, __field, _Factory, _Allocator, _Hash, _Compare, _GetKey>::map(initsize, allocator) {}
+        hashmap_helper::impl<_Key, _T, _Base, _Entry, __field, _ElmAllocator, _Allocator, _Hash, _Compare, _GetKey>::map(initsize, allocator) {}
 };
 
 #define ll_hashmap(k, T, entry, ...) ll::hashmap<k, T, typeof_container(&T::entry), typeof_member(&T::entry), &T::entry, ##__VA_ARGS__>

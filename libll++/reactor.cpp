@@ -48,7 +48,7 @@ void reactor::set_default_params(unsigned maxfds, unsigned maxevents)
     _default_maxevents = maxevents;
 }
 
-int reactor::open(int fd, unsigned flags, io::closure_t *handler)
+int reactor::open(int fd, unsigned flags)
 {
     if (!ll_fd_valid(fd) && (unsigned)fd >= _maxfds) {
         return e_inval;
@@ -56,7 +56,7 @@ int reactor::open(int fd, unsigned flags, io::closure_t *handler)
 
     io *io = _fds[fd];
     if (!io) {
-        _fds[fd] = io = create<reactor::io>(_pool);
+        _fds[fd] = io = construct<reactor::io>(_pool->alloc(sizeof(reactor::io)));
     }
 
     ll_failed_return(io->open(fd));
@@ -88,9 +88,10 @@ int reactor::open(int fd, unsigned flags, io::closure_t *handler)
 
     ll_sys_failed_return_ex(epoll_ctl(_fd, EPOLL_CTL_ADD, fd, &event), io->deattch());
     
+    /*
     if (handler) {
         ll_failed_return_ex(io->connect(handler), io->deattch());
-    }
+    }*/
     return ok;
 }
 

@@ -1,53 +1,62 @@
-#include <type_traits>
 #include <iostream>
 using std::cout;
 using std::endl;
 
 #include "libll++/slotsig.h"
-#include "libll++/timeval.h"
-#include "libll++/module.h"
-
-struct static_foo {
-    static_foo() {
-        cout << "static_foo111" << endl;
-    }
-    static_foo(bool b) {
-        cout << "static_foo" << endl;
-        cout << b << endl;
-    }
-};
-
-static static_foo fff;
-static static_foo fff2(false);
+#include "libll++/memory.h"
 
 struct foo {
-    foo() {
-        cout << "foo" << endl;
-    }
-    ll::signal<int()> sig;
-};
-
-struct B {
-    int dodo(int magic) {
-        cout << "kkkkkkkkkk" << magic << endl;
+    int operator()(int &magic) {
+        cout << "bbbbbbbbbbb" << magic++ << endl;
         return 0;
     }
-    ll::signal<int()>::slot<B, int> _slot;
 
-    B() : _slot(this, &B::dodo, 3) {}
+    int dodo(int magic) {
+        cout << "kkkkkkkkkk" << magic++ << endl;
+        return 0;
+    }
+    
+    int _n;
+
+    void free(void *, size_t) {
+    }
 };
 
-void walk(void sum1(int)) 
-{
-    sum1(0);
-}
+struct fofo {
+    void free(void *, size_t) {
+    }
+};
+
+struct foo2 : foo, fofo {
+    using fofo::free;
+    void lll() {
+    }
+};
+
+template <typename _T>
+struct member_class;
+
+template <typename _T, typename _U>
+struct member_class<_T _U::*> {
+    typedef _U type;
+};
 
 int main()
 {
     foo f;
-    B b;
-    f.sig.connect(b._slot);
-    f.sig.emit();
+    int n = 100;
 
+    ll::signal<int(), ll::malloc_allocator> sig;
+    sig.connect(f, n);
+    auto slot = sig.connect(&foo::dodo, f, 100);
+    sig.emit();
+    sig.disconnect(slot);
+    sig.emit();
+
+    ll::signal<int(), ll::mallocator, true> once_sig;
+    once_sig.connect(f, n);
+    once_sig.emit();
+    once_sig.connect(&foo::dodo, f, 100);
+    once_sig.emit();
     return 0;
 }

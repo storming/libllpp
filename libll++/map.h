@@ -18,7 +18,7 @@ namespace map_helper {
         _Entry _Base::*__field, 
         bool __left_acc, 
         bool __right_acc, 
-        typename _Factory,
+        typename _Allocator,
         typename _GetKey,
         typename _Compare>
     struct impl {
@@ -26,8 +26,7 @@ namespace map_helper {
         typedef _T                              type_t;
         typedef _Base                           base_t;
         typedef _Entry                          entry_t;
-        typedef _Factory                        factory_t;
-        typedef typename factory_t::allocator_t factory_allocator_t;
+        typedef _Allocator                      allocator_t;
         typedef _GetKey                         getkey_t;
         typedef _Compare                        compare_t;
         class map;
@@ -194,7 +193,7 @@ namespace map_helper {
             }
 
             template <typename ...Args>
-            type_t *probe(key_t key, int *flag, factory_allocator_t *allocator, Args &&... args) {
+            type_t *probe(key_t key, int *flag, allocator_t *allocator, Args &&... args) {
                 rbtree::node **link = &_root;
                 rbtree::node *parent = nullptr;
                 type_t* elm;
@@ -226,7 +225,7 @@ namespace map_helper {
                     }
                 }
 
-                elm = create<type_t, factory_t>(allocator, key, std::forward<Args>(args)...);
+                elm = _new<type_t>(allocator, key, std::forward<Args>(args)...);
                 rbtree::node *node = &(elm->*__field);
 
                 if (__left_acc && left) {
@@ -467,12 +466,12 @@ template <
     _Entry _Base::*__field, 
     bool __left_acc = true, 
     bool __right_acc = false, 
-    typename _Factory = typename factory_of<_T>::type,
+    typename _Allocator = pool,
     typename _Compare = comparer<_Key>,
     typename _GetKey = _T>
-class map : public map_helper::impl<_Key, _T, _Base, _Entry, __field, __left_acc, __right_acc, _Factory, _GetKey, _Compare>::map {
+class map : public map_helper::impl<_Key, _T, _Base, _Entry, __field, __left_acc, __right_acc, _Allocator, _GetKey, _Compare>::map {
 public:
-    map() : map_helper::impl<_Key, _T, _Base, _Entry, __field, __left_acc, __right_acc, _Factory, _GetKey, _Compare>::map() {
+    map() : map_helper::impl<_Key, _T, _Base, _Entry, __field, __left_acc, __right_acc, _Allocator, _GetKey, _Compare>::map() {
     }
 };
 

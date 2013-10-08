@@ -3,7 +3,6 @@
 
 #include "slotsig.h"
 #include "member.h"
-#include <iostream>
 
 namespace ll {
 
@@ -27,11 +26,11 @@ template <typename ..._Args>
 class modules {
 public:
     typedef modules<_Args...> modules_t;
-    typedef signal<int(_Args...)> sig_init_t;
-    typedef signal<int(_Args...)> sig_exit_t;
+    typedef signal<int(_Args...), void> sig_init_t;
+    typedef signal<int(_Args...), void> sig_exit_t;
 
-    signal<int(_Args...)> sig_init;
-    signal<int(_Args...)> sig_exit;
+    sig_init_t sig_init;
+    sig_exit_t sig_exit;
 
     modules() : sig_init(), sig_exit() {}
 
@@ -45,10 +44,10 @@ public:
     }
     int exit(_Args&&...args) {
         if (ll::internal::module::__modules_reverse) {
-            return sig_exit.emit(std::forward<_Args>(args)...);
+            return sig_exit.emit([](int r){ return 0; }, std::forward<_Args>(args)...);
         }
         else {
-            return sig_exit.remit(std::forward<_Args>(args)...);
+            return sig_exit.remit([](int r){ return 0; }, std::forward<_Args>(args)...);
         }
     }
 
@@ -59,8 +58,9 @@ public:
     struct assember_init {
         template <typename ..._Params>
         static void assembe_init(modules_t &mm, _T &obj, _Params&&...params) {
-            static typename sig_init_t::template slot<_T, _Params...> s(obj, &_T::module_init, std::forward<_Params>(params)...);
-            mm.sig_init.connect(s);
+            static auto c = sig_init_t::closure_t::make(&_T::module_init, obj, std::forward<_Params>(params)...);
+            static typename sig_init_t::slot s(&c);
+            mm.sig_init.connect(&s);
         }
     };
 
@@ -75,8 +75,9 @@ public:
     struct assember_exit {
         template <typename ..._Params>
         static void assembe_exit(modules_t &mm, _T &obj, _Params&&...params) {
-            static typename sig_exit_t::template slot<_T, _Params...> s(obj, &_T::module_init, std::forward<_Params>(params)...);
-            mm.sig_exit.connect(s);
+            static auto c = sig_exit_t::closure_t::make(&_T::module_exit, obj, std::forward<_Params>(params)...);
+            static typename sig_exit_t::slot s(&c);
+            mm.sig_exit.connect(&s);
         }
     };
 
@@ -110,14 +111,14 @@ public:
         return m;
     }
 };
-};
-};
-
+}
+}
 #define ll_module(mclass, ...) static ll::internal::module::modules::assember<mclass> \
     __libllpp_module_##mclass(ll::internal::module::modules::instance(), ##__VA_ARGS__)
-#endif
 
-};
+
+#endif
+}
 
 #endif
 

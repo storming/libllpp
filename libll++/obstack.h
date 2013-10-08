@@ -2,6 +2,7 @@
 #define __LIBLLPP_OBSTACK_H__
 
 #include <cstdarg>
+#include <utility>
 #include "page.h"
 
 namespace ll {

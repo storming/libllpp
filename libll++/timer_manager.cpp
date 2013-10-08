@@ -3,8 +3,6 @@
 namespace ll {
 
 /* timer */
-typedef factory_bind<timer, factory<timer, cache>> timer_impl;
-
 inline timer::timer(timeval expires, timeval interval) : _expires(expires), _interval(interval) 
 {
 }
@@ -15,7 +13,7 @@ inline timeval timer::get_key(timer *t)
 }
 
 /* timer_manager */
-timer_manager::timer_manager(pool *pool) : _cache(pool), _counter()
+timer_manager::timer_manager(pool *pool) : _cache(caches::instance()->get<timer>()), _counter()
 {
 }
 
@@ -29,7 +27,7 @@ inline void timer_manager::update_seq(timer *timer)
 
 timer *timer_manager::schedule_i(timeval expires, timeval interval, timer::closure_t *handler)
 {
-    timer *timer = ll::create<timer_impl>(&_cache, expires, interval);
+    timer *timer = _new<ll::timer>(_cache, expires, interval);
     _map.insert(timer);
     if (handler) {
         timer->connect(handler);
@@ -54,7 +52,7 @@ void timer_manager::remove(timer *timer)
     _map.remove(timer);
     timer->disconnect();
     timer->_seq = 0;
-    ll::destroy(static_cast<timer_impl*>(timer), &_cache);
+    _cache->_delete<ll::timer>(timer);
 }
 
 timeval timer_manager::loop_i(timeval curtime)
