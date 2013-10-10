@@ -47,8 +47,32 @@ allocator还有2个可选函数，_new和_delete。在通用类里是没有的�
 
 当前，libll++有以下几种static allocator。
 
-malloc_allocator，它是对std::malloc和std::free的封装。简而言之，最后的选择。
+malloc_allocator，它是对`std::malloc`和`std::free`的封装。简而言之，最后的选择。
 
+new_allocator，它的实现方式不是使用`::malloc`也不是`::new`。在以前的blog中，我曾经提到过我有在libll++中实现一个slub分配器的想法。
+尽管现在这不是当务之急，但是我还是留下了其相关伏笔。在当前的libll++为slub分配器预留了cache概念。当前的cache本质是个pool cache，
+它从pool的global实例中分配内存，使用sized bins array来记录free的内存。它分配的内存没有边界标志，它依赖libll++的默认free语意，
+也就是free的时候需要传入内存size。为了完成new的语意，new_allocator使用跟malloc一样的策略，在分配出的内存前面埋入一个size_t，
+用来保存内存的大小。
+
+mallocator，这是libll++的默认分配器。它也使用cache来完成内存分配，但是它不保存内存块大小。这个size需要程序员自己维护。把mallocator
+作为默认allocator，表达了一种态度，libll++的设计目标是为了效率。
+
+分配器必须传入size，这意味着一个问题：这种分配器不能准确的释放有虚析构的函数，析构可以虚，但是size没法虚。虚析构在比较深的class tree
+中是必须的，比如说UI系统。比如说一个window的子window，各种各样，它们使用虚函数和虚析构来完成逻辑组织。在高性能服务器应用中，类层次
+则是相对扁平，横向数量可能很大，但是层次不多。这时候虚析构只是浮云。libll++的默认分配器allocator是个typedef，如果需要强调虚析构，
+需要把它指向new_allocator或者malloc_allocator。
+
+最后，我们需要一个方式来构造类。libll++是个类库，它不可能去overload operator new和delete。它使用一系列的模板函数来完成这个工作。
+
+construct函数用于构造一个类，它本质就是placement new。
+
+destroy函数，它调用class的析构函数。
+
+`_alloc`函数，它是allocator的argument forward的终端。在c++0x中，为了解决`&`、`const&`和pointer参数的完美传递引入了forward，参数总是这么
+forward来forward去，最后需要一个终端来确定。
+
+`_free`函数，一方面完成free的终端，另外一方面它通过sfinae判断allocator是否有free，如果没哟用空函数替代。
 
 ------------------------------------------------------------------------------------------------------------------------------------------
 ##2013-10-8 C++中内存操作的不适应以及对模板编程手法的幼稚
