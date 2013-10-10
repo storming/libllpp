@@ -45,46 +45,59 @@ public:
     private:
         type *_ptr;
     public:
-        iterator(type *object = nullptr) : _ptr(object) {}
-        type& operator*() {
+        iterator(type *object = nullptr) noexcept : _ptr(object) {}
+        iterator(const iterator &x) noexcept : _ptr(x._ptr) {}
+
+        iterator &operator=(const iterator &x) noexcept {
+            _ptr = x._ptr;
+            return *this;
+        }
+
+        type& operator*() noexcept {
             return *_ptr;
         }
 
-        type* operator->() {
+        type* operator->() noexcept {
             return _ptr;
         }
 
-        type* pointer() {
+        type* pointer() noexcept {
             return _ptr;
         }
 
-        iterator& operator++() {
+        iterator& operator++() noexcept {
             _ptr = __LIST_OBJECT__(__LIST_ENTRY__(_ptr)._next);
             return *this;
         }
 
-        iterator operator++(int) {
+        iterator operator++(int) noexcept {
             iterator tmp(_ptr);
             _ptr = __LIST_OBJECT__(__LIST_ENTRY__(_ptr)._next);
             return tmp;
         }
 
-        bool operator==(const iterator &other) const {
-            return _ptr == other._ptr;
+        bool operator==(const iterator &x) const noexcept {
+            return _ptr == x._ptr;
         }
 
-        bool operator!=(const iterator &other) const {
-            return _ptr != other._ptr;
+        bool operator!=(const iterator &x) const noexcept {
+            return _ptr != x._ptr;
         }
     };
 public:
-    list() : _first(nullptr) {}
+    list() noexcept : _first(nullptr) {}
+    list(const list &x) noexcept : _first(x._first) {}
 
-    void init() {
+    list &operator=(const list &x) noexcept {
+        _first = x._first;
+        return *this;
+    }
+
+    void init() noexcept {
         _first = nullptr;
     }
 
-    static type *insert_back(type *listelm, type *elm) {
+    static type *insert_back(type *listelm, type *elm) noexcept {
         register entry_type &listed = __LIST_ENTRY__(listelm);
         register entry_type &entry = __LIST_ENTRY__(elm);
 
@@ -96,7 +109,7 @@ public:
         return elm;
     }
 
-    static type *insert_front(type *listelm, type *elm) {
+    static type *insert_front(type *listelm, type *elm) noexcept {
         register entry_type &listed = __LIST_ENTRY__(listelm);
         register entry_type &entry = __LIST_ENTRY__(elm);
 
@@ -108,7 +121,7 @@ public:
         return elm;
     }
 
-    static type *remove(type *elm) {
+    static type *remove(type *elm) noexcept {
         register entry_type &entry = __LIST_ENTRY__(elm);
 
         if (entry._next != nullptr) {
@@ -118,23 +131,23 @@ public:
         return elm;
     }
 
-    type *first() {
+    type *first() noexcept {
         return _first;
     }
 
-    type *front() {
+    type *front() noexcept {
         return _first;
     }
 
-    static type *next(type *elm) {
+    static type *next(type *elm) noexcept {
         return __LIST_OBJECT__(__LIST_ENTRY__(elm)._next);
     }
 
-    bool empty() {
+    bool empty() noexcept {
         return !_first;
     }
 
-    type *push_front(type *elm) {
+    type *push_front(type *elm) noexcept {
         register entry_type &entry = __LIST_ENTRY__(elm);
         if ((entry._next = _first) != nullptr) {
             __LIST_ENTRY__(_first)._prev = &entry._next;
@@ -144,26 +157,26 @@ public:
         return elm;
     }
 
-    type *pop_front() {
+    type *pop_front() noexcept {
         if (!_first) {
             return nullptr;
         }
         return remove(_first);
     }
 
-    iterator begin() {
+    iterator begin() noexcept {
         return iterator(_first);
     }
 
-    const iterator begin() const {
+    const iterator begin() const noexcept {
         return iterator(_first);
     }
 
-    iterator end() {
+    iterator end() noexcept {
         return iterator(nullptr);
     }
 
-    const iterator end() const {
+    const iterator end() const noexcept {
         return iterator(nullptr);
     }
 };
@@ -171,25 +184,27 @@ public:
 /* clist */
 struct clist_entry {
     static const int type = list_type::clist;
-    clist_entry() {}
-    clist_entry(clist_entry *next, clist_entry *prev): _next(next), _prev(prev) {}
-    clist_entry(clist_entry *next): _next(next) {}
+    clist_entry() noexcept {}
+    clist_entry(clist_entry *next, clist_entry *prev) noexcept : _next(next), _prev(prev) {}
+    clist_entry(clist_entry *next) noexcept : _next(next) {}
+    clist_entry(const clist_entry &x) noexcept : _next(x._next), _prev(x._prev) {}
+
     clist_entry *_next;
     clist_entry *_prev;
 
-    void remove() {
+    void remove() noexcept {
         _next->_prev = _prev;
         _prev->_next = _next;
     }
 
-    void insert_back(clist_entry *listed) {
+    void insert_back(clist_entry *listed) noexcept {
         _next = listed->_next;
         _prev = listed;
         listed->_next->_prev = this;
         listed->_next = this;
     }
 
-    void insert_front(clist_entry *listed) {
+    void insert_front(clist_entry *listed) noexcept {
         _next = listed;
         _prev = listed->_prev;
         listed->_prev->_next = this;
@@ -208,91 +223,177 @@ public:
     private:
         entry_type *_entry;
     public:
-        iterator(entry_type *entry) : _entry(entry) {}
-        type& operator*() {
+        iterator(entry_type *entry) noexcept : _entry(entry) {}
+        iterator(const iterator &x) noexcept : _entry(x._entry) {}
+
+        iterator &operator=(const iterator &x) noexcept {
+            _entry = x._entry;
+            return *this;
+        }
+
+        type& operator*() noexcept {
             return *__CLIST_OBJECT__(_entry);
         }
 
-        type* operator->() {
+        type* operator->() noexcept {
             return __CLIST_OBJECT__(_entry);
         }
 
-        type* pointer() {
+        type* pointer() noexcept {
             return __CLIST_OBJECT__(_entry);
         }
 
-        const iterator& operator++() {
+        iterator& operator++() noexcept {
             _entry = _entry->_next;
             return *this;
         }
 
-        iterator operator++(int) {
+        iterator operator++(int) noexcept {
             iterator tmp(_entry);
             _entry = _entry->_next;
             return tmp;
         }
 
-        iterator& operator--() {
+        iterator& operator--() noexcept {
             _entry = _entry->_prev;
             return *this;
         }
 
-        iterator operator--(int) {
+        iterator operator--(int) noexcept {
             iterator tmp(_entry);
             _entry = _entry->_prev;
             return tmp;
         }
 
-        bool operator==(const iterator &other) const {
-            return _entry == other._entry;
+        bool operator==(const iterator &x) const noexcept {
+            return _entry == x._entry;
         }
 
-        bool operator!=(const iterator &other) const {
-            return _entry != other._entry;
+        bool operator!=(const iterator &x) const noexcept {
+            return _entry != x._entry;
         }
     };
 
-public:
-    list() : clist_entry(this, this) {}
     
-    void init() {
+    class reverse_iterator {
+    private:
+        entry_type *_entry;
+    public:
+        reverse_iterator(entry_type *entry) noexcept : _entry(entry) {}
+        reverse_iterator(const iterator &x) noexcept : _entry(x._entry) {}
+
+        reverse_iterator &operator=(const reverse_iterator &x) noexcept {
+            _entry = x._entry;
+            return *this;
+        }
+
+        type& operator*() noexcept {
+            return *__CLIST_OBJECT__(_entry);
+        }
+
+        type* operator->() noexcept {
+            return __CLIST_OBJECT__(_entry);
+        }
+
+        type* pointer() noexcept {
+            return __CLIST_OBJECT__(_entry);
+        }
+
+        reverse_iterator& operator++() noexcept {
+            _entry = _entry->_prev;
+            return *this;
+        }
+
+        reverse_iterator operator++(int) noexcept {
+            iterator tmp(_entry);
+            _entry = _entry->_prev;
+            return tmp;
+        }
+
+        reverse_iterator& operator--() noexcept {
+            _entry = _entry->_next;
+            return *this;
+        }
+
+        reverse_iterator operator--(int) noexcept {
+            iterator tmp(_entry);
+            _entry = _entry->_next;
+            return tmp;
+        }
+
+        bool operator==(const reverse_iterator &x) const noexcept {
+            return _entry == x._entry;
+        }
+
+        bool operator!=(const reverse_iterator &x) const noexcept {
+            return _entry != x._entry;
+        }
+    };
+
+private:
+    void assign(list &x) noexcept {
+        if (x.empty()) {
+            init();
+        }
+        else {
+            _next = x._next;
+            _next->_prev = this;
+            _prev = x._prev;
+            _prev->_next = this;
+        }
+    }
+
+public:
+    list() noexcept : clist_entry(this, this) {}
+    list(const list &x) = delete;
+    list(list &&x) noexcept {
+        assign(x);
+    }
+
+    list &operator=(const list &x) = delete;
+    list &operator=(list &&x) noexcept {
+        assign(x);
+        return *this;
+    }
+
+    void init() noexcept {
         _next = this;
         _prev = this;
     }
 
-    static type *insert_back(type *listelm, type *elm) {
+    static type *insert_back(type *listelm, type *elm) noexcept {
         register entry_type *listed = &(listelm->*__field);
         register entry_type *entry = &(elm->*__field);
         entry->insert_back(listed);
         return elm;
     }
 
-    static type *insert_front(type *listelm, type *elm) {
+    static type *insert_front(type *listelm, type *elm) noexcept {
         register entry_type *listed = &(listelm->*__field);
         register entry_type *entry = &(elm->*__field);
         entry->insert_front(listed);
         return elm;
     }
 
-    static type *remove(type *elm) {
+    static type *remove(type *elm) noexcept {
         register entry_type *entry = &(elm->*__field);
         entry->remove();
         return elm;
     }
 
-    type *push_front(type *elm) {
+    type *push_front(type *elm) noexcept {
         register entry_type *entry = &(elm->*__field);
         entry->insert_back(this);
         return elm;
     }
 
-    type *push_back(type *elm) {
+    type *push_back(type *elm) noexcept {
         register entry_type *entry = &(elm->*__field);
         entry->insert_front(this);
         return elm;
     }
 
-    type *pop_front() {
+    type *pop_front() noexcept {
         register entry_type *entry = _next;
         if (entry == this) {
             return nullptr;
@@ -303,7 +404,7 @@ public:
         }
     }
 
-    type *pop_back() {
+    type *pop_back() noexcept {
         register entry_type *entry = _prev;
         if (entry == this) {
             return nullptr;
@@ -314,60 +415,57 @@ public:
         }
     }
 
-    type *first() {
+    type *first() noexcept {
         return _next == this ? nullptr : __CLIST_OBJECT__(_next);
     }
 
-    type *last() {
+    type *last() noexcept {
         return _prev == this ? nullptr : __CLIST_OBJECT__(_prev);
     }
 
-    type *front() {
+    type *front() noexcept {
         return _next == this ? nullptr : __CLIST_OBJECT__(_next);
     }
 
-    type *back() {
+    type *back() noexcept {
         return _prev == this ? nullptr : __CLIST_OBJECT__(_prev);
     }
 
-    bool empty() {
+    bool empty() noexcept {
         return _prev == _next;
     }
 
-    iterator begin() {
+    iterator begin() noexcept {
         return iterator(_next);
     }
 
-    const iterator begin() const {
+    const iterator begin() const noexcept {
         return iterator(_next);
     }
 
-    iterator end() {
+    iterator end() noexcept {
         return iterator(this);
     }
 
-    const iterator end() const {
+    const iterator end() const noexcept {
         return iterator(this);
     }
 
-
-
-    iterator rbegin() {
-        return iterator(_prev);
+    reverse_iterator rbegin() noexcept {
+        return reverse_iterator(_prev);
     }
 
-    const iterator rbegin() const {
-        return iterator(_prev);
+    const reverse_iterator rbegin() const noexcept {
+        return reverse_iterator(_prev);
     }
 
-    iterator rend() {
-        return iterator(this);
+    reverse_iterator rend() noexcept {
+        return reverse_iterator(this);
     }
 
-    const iterator rend() const {
-        return iterator(this);
+    const reverse_iterator rend() const noexcept {
+        return reverse_iterator(this);
     }
-
 };
 
 /* slist_entry */
@@ -389,47 +487,60 @@ public:
     private:
         type *_ptr;
     public:
-        iterator(type *object) : _ptr(object) {}
-        type& operator*() {
+        iterator(type *object) noexcept : _ptr(object) {}
+        iterator(const iterator &x) noexcept : _ptr(x._ptr) {}
+
+        iterator &operator=(const iterator &x) noexcept {
+            _ptr = x._ptr;
+            return *this;
+        }
+
+        type& operator*() noexcept {
             return *_ptr;
         }
 
-        type* operator->() {
+        type* operator->() noexcept {
             return _ptr;
         }
 
-        type* pointer() {
+        type* pointer() noexcept {
             return _ptr;
         }
 
-        iterator& operator++() {
+        iterator& operator++() noexcept {
             _ptr = __LIST_OBJECT__(__LIST_ENTRY__(_ptr)._next);
             return *this;
         }
 
-        iterator operator++(int) {
+        iterator operator++(int) noexcept {
             iterator tmp(_ptr);
             _ptr = __LIST_OBJECT__(__LIST_ENTRY__(_ptr)._next);
             return tmp;
         }
 
-        bool operator==(const iterator &other) const {
-            return _ptr == other._ptr;
+        bool operator==(const iterator &x) const noexcept {
+            return _ptr == x._ptr;
         }
 
-        bool operator!=(const iterator &other) const {
-            return _ptr != other._ptr;
+        bool operator!=(const iterator &x) const noexcept {
+            return _ptr != x._ptr;
         }
     };
 
 public:
-    list() : _first(nullptr) {}
+    list() noexcept : _first(nullptr) {}
+    list(const list &x) noexcept : _first(x._first) {}
 
-    void init() {
+    list &operator=(const list &x) noexcept {
+        _first = x._first;
+        return *this;
+    }
+
+    void init() noexcept {
         _first = nullptr;
     }
 
-    static type *insert_back(type *listelm, type *elm) {
+    static type *insert_back(type *listelm, type *elm) noexcept {
         register entry_type &listed = __LIST_ENTRY__(listelm);
         register entry_type &entry = __LIST_ENTRY__(elm);
 
@@ -438,23 +549,23 @@ public:
         return elm;
     }
 
-    bool empty() {
+    bool empty() noexcept {
         return !_first;
     }
 
-    type *first() {
+    type *first() noexcept {
         return _first;
     }
 
-    type *front() {
+    type *front() noexcept {
         return _first;
     }
 
-    static type *next(type *elm) {
+    static type *next(type *elm) noexcept {
         return __LIST_OBJECT__(__LIST_ENTRY__(elm)._next);
     }
 
-    type *push_front(type *elm) {
+    type *push_front(type *elm) noexcept {
         register entry_type &entry = __LIST_ENTRY__(elm);
 
         entry._next = _first;
@@ -462,7 +573,7 @@ public:
         return elm;
     }
 
-    type *pop_front() {
+    type *pop_front() noexcept {
         type *elm = _first;
         if (elm) {
             _first = __LIST_OBJECT__(__LIST_ENTRY__(elm)._next);
@@ -470,7 +581,7 @@ public:
         return elm;
     }
 
-    type *remove(type *elm, type *prev) {
+    type *remove(type *elm, type *prev) noexcept {
         if (!prev) {
             return pop_front();
         }
@@ -481,7 +592,7 @@ public:
         }
     }
 
-    type *remove(type *elm) {
+    type *remove(type *elm) noexcept {
         if (_first == elm) {
             return pop_front();
         }
@@ -503,19 +614,19 @@ public:
         }
     }
 
-    iterator begin() {
+    iterator begin() noexcept {
         return iterator(_first);
     }
 
-    const iterator begin() const {
+    const iterator begin() const noexcept {
         return iterator(_first);
     }
 
-    iterator end() {
+    iterator end() noexcept {
         return iterator(nullptr);
     }
 
-    const iterator end() const {
+    const iterator end() const noexcept {
         return iterator(nullptr);
     }
 };
@@ -540,65 +651,91 @@ public:
     private:
         type *_ptr;
     public:
-        iterator(type *object) : _ptr(object) {}
+        iterator(type *object) noexcept : _ptr(object) {}
+        iterator(const iterator &x) noexcept : _ptr(x._ptr) {}
 
-        type& operator*() {
+        iterator &operator=(const iterator &x) noexcept {
+            _ptr = x._ptr;
+            return *this;
+        }
+
+        type& operator*() noexcept {
             return *_ptr;
         }
 
-        type* operator->() {
+        type* operator->() noexcept {
             return _ptr;
         }
 
-        type* pointer() {
+        type* pointer() noexcept {
             return _ptr;
         }
 
-        iterator& operator++() {
+        iterator& operator++() noexcept {
             _ptr = __LIST_OBJECT__(__LIST_ENTRY__(_ptr)._next);
             return *this;
         }
 
-        iterator operator++(int) {
+        iterator operator++(int) noexcept {
             iterator tmp(_ptr);
             _ptr = __LIST_OBJECT__(__LIST_ENTRY__(_ptr)._next);
             return tmp;
         }
 
-        bool operator==(const iterator &other) const {
-            return _ptr == other._ptr;
+        bool operator==(const iterator &x) const noexcept {
+            return _ptr == x._ptr;
         }
 
-        bool operator!=(const iterator &other) const {
-            return _ptr != other._ptr;
+        bool operator!=(const iterator &x) const noexcept {
+            return _ptr != x._ptr;
         }
     };
-
+private:
+    void assign(list &x) noexcept {
+        if (x.empty()) {
+            init();
+        }
+        else {
+            _first = x._first;
+            _last = x._last;
+        }
+    }
 public:
-    list() : _first(nullptr), _last(&_first) {}
+    list() noexcept : _first(nullptr), _last(&_first) {}
+    list(const list &) = delete;
+    list(list &&x) noexcept {
+        assign(x);
+    }
 
-    void init() {
+    list &operator=(const list &) = delete;
+
+    list &operator=(list &&x) noexcept {
+        assign(x);
+        return *this;
+    }
+
+    void init() noexcept {
         _first = nullptr;
         _last = &_first;
     }
 
-    bool empty() {
+    bool empty() noexcept {
         return !_first;
     }
 
-    type *first() {
+    type *first() noexcept {
         return _first;
     }
 
-    type *front() {
+    type *front() noexcept {
         return _first;
     }
 
-    static type *next(type *elm) {
+    static type *next(type *elm) noexcept {
         return __LIST_OBJECT__(__LIST_ENTRY__(elm)._next);
     }
 
-    type *push_front(type *elm) {
+    type *push_front(type *elm) noexcept {
         register entry_type &entry = __LIST_ENTRY__(elm);
 
         if ((entry._next = _first) == nullptr) {
@@ -608,7 +745,7 @@ public:
         return elm;
     }
 
-    type *push_back(type *elm) {
+    type *push_back(type *elm) noexcept {
         register entry_type &entry = __LIST_ENTRY__(elm);
 
         entry._next = nullptr;
@@ -618,7 +755,7 @@ public:
         return elm;
     }
 
-    type* pop_front() {
+    type* pop_front() noexcept {
         type* elm = _first;
         if (elm) {
             if ((_first = __LIST_OBJECT__(__LIST_ENTRY__(elm)._next)) == nullptr) {
@@ -628,7 +765,7 @@ public:
         return elm;
     }
 
-    type *insert_back(type *listelm, type *elm) {
+    type *insert_back(type *listelm, type *elm) noexcept {
         register entry_type &listed = __LIST_ENTRY__(listelm);
         register entry_type &entry = __LIST_ENTRY__(elm);
 
@@ -639,7 +776,7 @@ public:
         return elm;
     }
 
-    type *remove(type *elm, type *prev) {
+    type *remove(type *elm, type *prev) noexcept {
         if (!prev) {
             return pop_front(elm);
         } 
@@ -652,7 +789,7 @@ public:
         }
     }
 
-    type *remove(type *elm) {
+    type *remove(type *elm) noexcept {
         if (_first == elm) {
             return pop_front();
         } 
@@ -676,24 +813,28 @@ public:
         }
     }
 
-    iterator begin() {
+    iterator begin() noexcept {
         return iterator(_first);
     }
 
-    const iterator begin() const {
+    const iterator begin() const noexcept {
         return iterator(_first);
     }
 
-    iterator end() {
+    iterator end() noexcept {
         return iterator(nullptr);
     }
 
-    const iterator end() const {
+    const iterator end() const noexcept {
         return iterator(nullptr);
     }
 };
 
-#define ll_list(_T, entry) ll::list<typeof_container(&_T::entry), typeof_member(&_T::entry), &_T::entry>
+#define ll_list(_T, entry) ll::list<                          \
+    typename ll::member_of<decltype(&_T::entry)>::class_type, \
+    typename ll::member_of<decltype(&_T::entry)>::type,       \
+    &_T::entry>
+
 };
 #endif
 

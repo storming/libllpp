@@ -206,6 +206,8 @@ private:
     };
 
 public:
+    static void _new() {
+    }
     /* make member functor */
     template <typename _T, typename _Obj, typename ..._Params>
     static auto make(_T &&fn, _Obj &&obj, _Params&&...args) noexcept -> 
@@ -247,8 +249,8 @@ public:
     template <typename _T, typename _Allocator, typename _Obj, typename ..._Params>
     static auto _new(_Allocator &&a, _T &&fn, _Obj &&obj, _Params&&...args) noexcept -> 
         typename std::enable_if<is_member_functor<decltype(fn)>::value, member_functor_impl<decltype(fn), _Params...>*>::type {
-        return ll::_new<member_functor_impl<decltype(fn), _Params...>>(
-            std::forward<_Allocator>(a), 
+        typedef member_functor_impl<decltype(fn), _Params...> type;
+        return construct<type>(_alloc(a, sizeof(type)), 
             std::forward<_T>(fn), 
             std::forward<_Obj>(obj), 
             std::forward<_Params>(args)...);
@@ -258,8 +260,8 @@ public:
     template <typename _T, typename _Allocator, typename ..._Params>
     static auto _new(_Allocator &&a, _T &&fn, _Params&&...args) noexcept -> 
         typename std::enable_if<is_pointer_functor<decltype(fn)>::value, pointer_functor_impl<decltype(fn), _Params...>*>::type {
-        return ll::_new<pointer_functor_impl<decltype(fn), _Params...>>(
-            std::forward<_Allocator>(a), 
+        typedef pointer_functor_impl<decltype(fn), _Params...> type;
+        return construct<type>(_alloc(a, sizeof(type)), 
             std::forward<_T>(fn), 
             std::forward<_Params>(args)...);
     }
@@ -268,8 +270,8 @@ public:
     template <typename _T, typename _Allocator, typename ..._Params>
     static auto _new(_Allocator &&a, _T &&fn, _Params&&...args) noexcept -> 
         typename std::enable_if<is_lref_functor<decltype(fn)>::value, lref_functor_impl<decltype(fn), _Params...>*>::type {
-        return ll::_new<lref_functor_impl<decltype(fn), _Params...>>(
-            std::forward<_Allocator>(a), 
+        typedef lref_functor_impl<decltype(fn), _Params...> type;
+        return construct<type>(_alloc(a, sizeof(type)), 
             std::forward<_T>(fn), 
             std::forward<_Params>(args)...);
     }
@@ -278,8 +280,8 @@ public:
     template <typename _T, typename _Allocator, typename ..._Params>
     static auto _new(_Allocator &&a, _T &&fn, _Params&&...args) noexcept -> 
         typename std::enable_if<is_rref_functor<decltype(fn)>::value, rref_functor_impl<decltype(fn), _Params...>*>::type {
-        return ll::_new<rref_functor_impl<decltype(fn), _Params...>>(
-            std::forward<_Allocator>(a), 
+        typedef rref_functor_impl<decltype(fn), _Params...> type;
+        return construct<type>(_alloc(a, sizeof(type)), 
             std::forward<_T>(fn), 
             std::forward<_Params>(args)...);
     }

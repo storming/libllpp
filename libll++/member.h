@@ -11,20 +11,8 @@ struct member_of;
 template <typename _T, typename _U>
 struct member_of<_T _U::*> {
     typedef _T type;
-    typedef _U clss_type;
+    typedef _U class_type;
 };
-
-/* typeof_member */
-template <typename _T, typename _C>
-_T typeof_member_helper(_T _C::*member);
-#define typeof_member(x) decltype(ll::typeof_member_helper(x))
-
-
-/* typeof_container */
-template <typename _T, typename _C>
-_C typeof_container_helper(_T _C::*member);
-#define typeof_container(x) decltype(ll::typeof_container_helper(x))
-
 
 /* offsetof_member */
 template <typename _T, typename _C>

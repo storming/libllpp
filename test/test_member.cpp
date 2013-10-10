@@ -27,8 +27,7 @@ int main()
     std::cout << check_foo<A>::has_function::value << std::endl;
     std::cout << check_foo<A>::has_signature<int()>::value << std::endl;
     std::cout << check_foo<A>::has_signature<int(int)>::value << std::endl;
-    std::cout<<std::is_same<int, typeof_member(&A::a)>::value << std::endl;
-    std::cout<<std::is_same<A, typeof_container(&B::a)>::value << std::endl;
-    std::cout<<std::is_same<B, typeof_container(&B::a)>::value << std::endl;
+    std::cout<<std::is_same<int, ll::member_of<decltype(&A::a)>::type>::value << std::endl;
+    std::cout<<std::is_same<A, ll::member_of<decltype(&B::a)>::class_type>::value << std::endl;
 	return 0;
 }

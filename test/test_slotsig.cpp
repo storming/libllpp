@@ -1,4 +1,7 @@
 #include <iostream>
+#include <type_traits>
+#include <utility>
+
 using std::cout;
 using std::endl;
 
@@ -6,6 +9,9 @@ using std::endl;
 #include "libll++/memory.h"
 
 struct foo {
+
+    int _n;
+    const char *_p;
     int operator()(int &magic) {
         cout << "bbbbbbbbbbb" << magic++ << endl;
         return 0;
@@ -16,29 +22,10 @@ struct foo {
         return 0;
     }
     
-    int _n;
+    foo() {}
+    foo(const char *p) : _p(p) {}
+    foo(int n, const char *p) : _n(n), _p(p) {}
 
-    void free(void *, size_t) {
-    }
-};
-
-struct fofo {
-    void free(void *, size_t) {
-    }
-};
-
-struct foo2 : foo, fofo {
-    using fofo::free;
-    void lll() {
-    }
-};
-
-template <typename _T>
-struct member_class;
-
-template <typename _T, typename _U>
-struct member_class<_T _U::*> {
-    typedef _U type;
 };
 
 int main()

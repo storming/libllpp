@@ -6,11 +6,11 @@ namespace ll {
 
 template <typename _T>
 struct comparer {
-    static int compare(_T obj, _T other) {
-        if (obj > other) {
+    static int compare(_T x, _T y) noexcept {
+        if (x > y) {
             return 1;
         }
-        else if (obj < other) {
+        else if (x < y) {
             return -1;
         }
         else {
@@ -21,8 +21,8 @@ struct comparer {
 
 template <typename _T>
 struct equal_compare {
-    static int compare(_T obj, _T other) {
-        return obj != other;
+    static int compare(_T x, _T y) noexcept {
+        return x != y;
     }
 };
 

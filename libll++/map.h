@@ -2,7 +2,7 @@
 #define __LIBLLPP_MAP_H__
 
 #include "rbtree.h"
-#include "memory.h"
+#include "allocator.h"
 #include "compare.h"
 
 namespace ll {
@@ -13,7 +13,6 @@ namespace map_helper {
     template <
         typename _Key, 
         typename _T, 
-        typename _Base, 
         typename _Entry, 
         _Entry _Base::*__field, 
         bool __left_acc, 
@@ -22,84 +21,83 @@ namespace map_helper {
         typename _GetKey,
         typename _Compare>
     struct impl {
-        typedef _Key                            key_t;
-        typedef _T                              type_t;
-        typedef _Base                           base_t;
-        typedef _Entry                          entry_t;
-        typedef _Allocator                      allocator_t;
-        typedef _GetKey                         getkey_t;
-        typedef _Compare                        compare_t;
+        typedef _Key                            key_type;
+        typedef _T                              value_type;
+        typedef _Entry                          entry_type;
+        typedef _Allocator                      allocator_type;
+        typedef _GetKey                         getkey_type;
+        typedef _Compare                        compare_type;
         class map;
 
-        template <typename _AEntry = entry_t, bool = __left_acc>
+        template <typename _AEntry = entry_type, bool = __left_acc>
         struct left_acc_policy {
-            rbtree::node *_left;
+            map_entry *_left;
             left_acc_policy() : _left() {}
 
-            void update(rbtree::node *node) {
+            void update(map_entry *node) {
                 _left = node;
             }
 
-            rbtree::node *get() {
+            map_entry *get() {
                 return _left;
             }
 
-            void truncate() {
+            void init() {
                 _left = nullptr;
             }
         };
 
         template <typename _AEntry>
         struct left_acc_policy<_AEntry, false> {
-            void update(rbtree::node *entry);
-            rbtree::node *get();
-            void truncate();
+            void update(map_entry *entry);
+            map_entry *get();
+            void init();
         };
 
-        template <typename _AEntry = entry_t, bool = __right_acc>
+        template <typename _AEntry = entry_type, bool = __right_acc>
         struct right_acc_policy {
-            rbtree::node *_right;
+            map_entry *_right;
 
             right_acc_policy() : _right() {}
-            void update(rbtree::node *node) {
+            void update(map_entry *node) {
                 _right = node;
             }
 
-            rbtree::node *get() {
+            map_entry *get() {
                 return _right;
             }
 
-            void truncate() {
+            void init() {
                 _right = nullptr;
             }
         };
 
         template <typename _AEntry>
         struct right_acc_policy<_AEntry, false> {
-            void update(rbtree::node *entry);
-            rbtree::node *get();
-            void truncate();
+            void update(map_entry *entry);
+            map_entry *get();
+            void init();
         };
 
-        class map : public rbtree, protected left_acc_policy<>, protected right_acc_policy<> {
+        class map {
         public:
             class iterator {
                 friend class map;
             private:
-                rbtree::node *_node;
-                iterator(rbtree::node *node) : _node(node) {}
+                map_entry *_node;
+                iterator(map_entry *node) : _node(node) {}
             public:
                 iterator() : _node() {}
-                type_t& operator*() {
-                    return *(static_cast<type_t*>(containerof_member(static_cast<entry_t*>(_node), __field)));
+                value_type& operator*() {
+                    return *(static_cast<value_type*>(containerof_member(static_cast<entry_type*>(_node), __field)));
                 }
 
-                type_t* operator->() {
-                    return static_cast<type_t*>(containerof_member(static_cast<entry_t*>(_node), __field));
+                value_type* operator->() {
+                    return static_cast<value_type*>(containerof_member(static_cast<entry_type*>(_node), __field));
                 }
 
-                type_t* pointer() {
-                    return static_cast<type_t*>(containerof_member(static_cast<entry_t*>(_node), __field));
+                value_type* pointer() {
+                    return static_cast<value_type*>(containerof_member(static_cast<entry_type*>(_node), __field));
                 }
 
                 const iterator& operator++() {
@@ -132,53 +130,82 @@ namespace map_helper {
                     return _node != other._node;
                 }
             };
+
+        private:
+            struct impl : public rbtree, public left_acc_policy<>, public right_acc_policy<>, public allocator_type {
+                impl() : rbtree(), left_acc_policy<>(), right_acc_policy<>, allocator_type() {}
+                impl(const allocator_type &a) : rbtree(), left_acc_policy<>(), right_acc_policy<>, allocator_type(a) {}
+
+                using rbtree::_root;
+                using rbtree::front;
+                using rbtree::back;
+
+                void init() {
+                    rbtree::init();
+
+                    if (__left_acc) {
+                        left_acc_policy<>::init();
+                    }
+
+                    if (__right_acc) {
+                        right_acc_policy<>::init();
+                    }
+                }
+
+                map_entry *get_left() {
+                    if (__left_acc) {
+                        return left_acc_policy<>::get();
+                    }
+                    else {
+                        return front();
+                    }
+                }
+
+                map_entry *get_right() {
+                    if (__right_acc) {
+                        return right_acc_policy<>::get();
+                    }
+                    else {
+                        return back();
+                    }
+                }
+
+                void set_left(map_entry *node) {
+                    left_acc_policy<>::update(node);
+                }
+
+                void set_right(map_entry *node) {
+                    return right_acc_policy<>::update(node);
+                }
+            };
+
+            impl _impl;
         public:
-            map() : rbtree(), left_acc_policy<>(), right_acc_policy<>() {}
+            map() : _impl() {}
+            map(const allocator_type &a) : _impl(a) {}
 
             using rbtree::empty;
             
-            void truncate() {
-                rbtree::truncate();
-
-                if (__left_acc) {
-                    left_acc_policy<>::truncate();
-                }
-
-                if (__right_acc) {
-                    right_acc_policy<>::truncate();
-                }
+            void init() {
+                _impl.init();
             }
 
-            type_t *front() {
-                rbtree::node *node;
-                if (__left_acc) {
-                    node = left_acc_policy<>::get();
-                }
-                else {
-                    node = rbtree::front();
-                }
-                return static_cast<type_t*>(containerof_member(static_cast<entry_t*>(node), __field));
+            value_type *front() {
+                return containerof_member(static_cast<entry_type*>(_impl.get_left()), __field);
             }
 
-            type_t *back() {
-                rbtree::node *node;
-                if (__right_acc) {
-                    node = right_acc_policy<>::get();
-                }
-                else {
-                    node = rbtree::back();
-                }
-                return static_cast<type_t*>(containerof_member(static_cast<entry_t*>(node), __field));
+            value_type *back() {
+                return containerof_member(static_cast<entry_type*>(_impl.get_right()), __field);
             }
 
-            type_t* get(key_t key) {
-                rbtree::node *node = _root;
-                type_t *elm;
+            value_type* get(key_type key) {
+                map_entry *node = _impl._root;
+                value_type *elm;
                 int n;
 
                 while (node) {
-                    elm = static_cast<type_t*>(containerof_member(static_cast<entry_t*>(node), __field));
-                    n = compare_t::compare(key, getkey_t::get_key(elm));
+                    elm = containerof_member(static_cast<entry_type*>(node), __field);
+                    n = compare_type::compare(key, getkey_type::get_key(elm));
 
                     if (n < 0) {
                         node = node->_left;
@@ -193,18 +220,18 @@ namespace map_helper {
             }
 
             template <typename ...Args>
-            type_t *probe(key_t key, int *flag, allocator_t *allocator, Args &&... args) {
-                rbtree::node **link = &_root;
-                rbtree::node *parent = nullptr;
-                type_t* elm;
+            value_type *probe(key_type key, int *flag, Args &&... args) {
+                map_entry **link = &_impl._root;
+                map_entry *parent = nullptr;
+                value_type* elm;
                 int left __attribute__((unused)) = 1;
                 int right __attribute__((unused)) = 1;
                 int n;
 
                 while (*link) {
                     parent = *link;
-                    elm = static_cast<type_t*>(containerof_member(static_cast<entry_t*>(parent), __field));
-                    n = compare_t::compare(key, getkey_t::get_key(elm));
+                    elm = containerof_member(static_cast<entry_type*>(parent), __field);
+                    n = compare_type::compare(key, getkey_type::get_key(elm));
 
                     if (n < 0) {
                         link = &(*link)->_left;
@@ -225,15 +252,15 @@ namespace map_helper {
                     }
                 }
 
-                elm = _new<type_t>(allocator, key, std::forward<Args>(args)...);
-                rbtree::node *node = &(elm->*__field);
+                elm = _new<value_type>(_impl, key, std::forward<Args>(args)...);
+                map_entry *node = &(elm->*__field);
 
                 if (__left_acc && left) {
-                    left_acc_policy<>::update(node);
+                    _impl.set_left(node);
                 }
 
                 if (__right_acc && right) {
-                    right_acc_policy<>::update(node);
+                    _impl.set_right(node);
                 }
 
                 rbtree::link(node, parent, link);
@@ -246,21 +273,21 @@ namespace map_helper {
             }
 
             template <bool __insert_after = true>
-            type_t* insert(type_t* new_elm) {
-                key_t key = getkey_t::get_key(new_elm);
-                rbtree::node **link = &_root;
-                rbtree::node *parent = nullptr;
+            value_type* insert(value_type* new_elm) {
+                key_type key = getkey_type::get_key(new_elm);
+                map_entry **link = &_impl._root;
+                map_entry *parent = nullptr;
                 int left __attribute__((unused)) = 1;
                 int right __attribute__((unused)) = 1;
                 int n;
-                type_t* elm;
+                value_type* elm;
     
                 if (__insert_after) {
                     while (*link) {
                         parent = *link;
     
-                        elm = static_cast<type_t*>(containerof_member(static_cast<entry_t*>(parent), __field));
-                        n = compare_t::compare(key, getkey_t::get_key(elm));
+                        elm = containerof_member(static_cast<entry_type*>(parent), __field);
+                        n = compare_type::compare(key, getkey_type::get_key(elm));
     
                         if (n < 0) {
                             link = &(*link)->_left;
@@ -279,8 +306,8 @@ namespace map_helper {
                     while (*link) {
                         parent = *link;
     
-                        elm = static_cast<type_t*>(containerof_member(static_cast<entry_t*>(parent), __field));
-                        n = compare_t::compare(key, getkey_t::get_key(elm));
+                        elm = containerof_member(static_cast<entry_type*>(parent), __field);
+                        n = compare_type::compare(key, getkey_type::get_key(elm));
     
                         if (n <= 0) {
                             link = &(*link)->_left;
@@ -297,14 +324,14 @@ namespace map_helper {
                 }
     
                 elm = new_elm;
-                rbtree::node *node = &(elm->*__field);
+                map_entry *node = &(elm->*__field);
     
                 if (__left_acc && left) {
-                    left_acc_policy<>::update(node);
+                    _impl.set_left(node);
                 }
     
                 if (__right_acc && right) {
-                    right_acc_policy<>::update(node);
+                    _impl.set_right(node);
                 }
     
                 rbtree::link(node, parent, link);
@@ -313,34 +340,34 @@ namespace map_helper {
                 return elm;
             }
     
-            type_t* replace(type_t *maped, type_t *new_elm) {
-                rbtree::node *maped_node = &(maped->*__field);
-                rbtree::node *new_node = &(new_elm->*__field);
-                if (__left_acc && left_acc_policy<>::get() == maped_node) {
-                    left_acc_policy<>::update(new_node);
+            value_type* replace(value_type *maped, value_type *new_elm) {
+                map_entry *maped_node = &(maped->*__field);
+                map_entry *new_node = &(new_elm->*__field);
+                if (__left_acc && _impl.get_left() == maped_node) {
+                    _impl.set_left(new_node);
                 }
-                if (__right_acc && right_acc_policy<>::get() == maped_node) {
-                    right_acc_policy<>::update(maped_node);
+                if (__right_acc && _impl.get_right() == maped_node) {
+                    _impl.set_right(new_node);
                 }
     
-                rbtree::replace(maped_node, new_node);
+                _impl.replace(maped_node, new_node);
                 return maped;
             }
     
-            type_t* replace(type_t *new_elm) {
-                key_t key = getkey_t::get_key(new_elm);
-                rbtree::node **link = &_root;
-                rbtree::node *parent = nullptr;
+            value_type* replace(value_type *new_elm) {
+                key_type key = getkey_type::get_key(new_elm);
+                map_entry **link = &_impl._root;
+                map_entry *parent = nullptr;
                 int left __attribute__((unused)) = 1;
                 int right __attribute__((unused)) = 1;
                 int n;
-                type_t* elm;
+                value_type* elm;
     
                 while (*link) {
                     parent = *link;
     
-                    elm = static_cast<type_t*>(containerof_member(static_cast<entry_t*>(parent), __field));
-                    n = compare_t::compare(key, getkey_t::get_key(elm));
+                    elm = containerof_member(static_cast<entry_type*>(parent), __field);
+                    n = compare_type::compare(key, getkey_type::get_key(elm));
     
                     if (n < 0) {
                         link = &(*link)->_left;
@@ -358,14 +385,14 @@ namespace map_helper {
                     }
                 }
     
-                rbtree::node *node = &(new_elm->*__field);
+                map_entry *node = &(new_elm->*__field);
     
                 if (__left_acc && left) {
-                    left_acc_policy<>::update(node);
+                    _impl.set_left(node);
                 }
     
                 if (__right_acc && right) {
-                    right_acc_policy<>::update(node);
+                    _impl.set_right(node);
                 }
     
                 rbtree::link(node, parent, link);
@@ -374,21 +401,21 @@ namespace map_helper {
                 return nullptr;
             }
     
-            type_t* remove(type_t *elm) {
-                rbtree::node *node = &(elm->*__field);
+            value_type* remove(value_type *elm) {
+                map_entry *node = &(elm->*__field);
     
-                if (__left_acc && left_acc_policy<>::get() == node) {
-                    left_acc_policy<>::update(node->next());
+                if (__left_acc && _impl.get_left() == node) {
+                    _impl.set_left(node->next());
                 }
                 if (__right_acc && right_acc_policy<>::get() == node) {
-                    right_acc_policy<>::update(node->prev());
+                    _impl.set_right(node->prev());
                 }
-                rbtree::remove(node);
+                _impl.remove(node);
                 return elm;
             }
     
-            type_t* remove(key_t key) {
-                type_t* elm = get(key);
+            value_type* remove(key_type key) {
+                value_type* elm = get(key);
                 if (elm) {
                     remove(elm);
                 }
@@ -396,25 +423,11 @@ namespace map_helper {
             }
     
             iterator begin() {
-                rbtree::node *node;
-                if (__left_acc) {
-                    node = left_acc_policy<>::get();
-                }
-                else {
-                    node = rbtree::front();
-                }
-                return iterator(node);
+                return iterator(_impl.get_left());
             }
     
             const iterator begin() const {
-                rbtree::node *node;
-                if (__left_acc) {
-                    node = left_acc_policy<>::get();
-                }
-                else {
-                    node = rbtree::front();
-                }
-                return iterator(node);
+                return iterator(_impl.get_left());
             }
     
             iterator end() {
@@ -426,25 +439,11 @@ namespace map_helper {
             }
     
             iterator rbegin() {
-                rbtree::node *node;
-                if (__right_acc) {
-                    node = right_acc_policy<>::get();
-                }
-                else {
-                    node = rbtree::back();
-                }
-                return iterator(node);
+                return iterator(_impl.get_right());
             }
     
             const iterator rbegin() const {
-                rbtree::node *node;
-                if (__right_acc) {
-                    node = right_acc_policy<>::get();
-                }
-                else {
-                    node = rbtree::back();
-                }
-                return iterator(node);
+                return iterator(_impl.get_right());
             }
     
             iterator rend() {
@@ -464,18 +463,22 @@ template <
     typename _Base, 
     typename _Entry, 
     _Entry _Base::*__field, 
+    typename _Allocator = allocator_of<_T>::type,
     bool __left_acc = true, 
     bool __right_acc = false, 
-    typename _Allocator = pool,
     typename _Compare = comparer<_Key>,
     typename _GetKey = _T>
 class map : public map_helper::impl<_Key, _T, _Base, _Entry, __field, __left_acc, __right_acc, _Allocator, _GetKey, _Compare>::map {
 public:
-    map() : map_helper::impl<_Key, _T, _Base, _Entry, __field, __left_acc, __right_acc, _Allocator, _GetKey, _Compare>::map() {
-    }
+    using map_helper::impl<_Key, _T, _Entry, __field, __left_acc, __right_acc, _Allocator, _GetKey, _Compare>::map;
 };
 
-#define ll_map(k, T, entry, ...) ll::map<k, T, typeof_container(&T::entry), typeof_member(&T::entry), &T::entry, ##__VA_ARGS__>
+#define ll_map(k, T, entry, ...) ll::map<                    \
+    k, T,                                                    \
+    typename ll::member_of<decltype(&T::entry)>::class_type, \
+    typename ll::member_of<decltype(&T::entry)>::type,       \
+    &T::entry,                                               \
+    ##__VA_ARGS__>
 
 }
 

@@ -32,12 +32,22 @@ reactor::reactor(pool *apool, unsigned maxfds, unsigned maxevents) :
     if ((_fd = epoll_create(_maxfds)) < 0) {
         crit_error("epoll_create", errno);
     }
+
+    _stub = _pool->connect([this](pool&){ dispose(); });
 }
 
 reactor::~reactor()
 {
-    if (_fd >= 0) {
-        ::close(_fd);
+    if (_stub) {
+        _pool->disconnect(_stub);
+    }
+    dispose();
+}
+
+void reactor::dispose() 
+{
+    if (ll_fd_valid(_fd)) {
+        file_io::close(_fd);
     }
 }
 
@@ -56,7 +66,7 @@ int reactor::open(int fd, unsigned flags)
 
     io *io = _fds[fd];
     if (!io) {
-        _fds[fd] = io = construct<reactor::io>(_pool->alloc(sizeof(reactor::io)));
+        _fds[fd] = io = _new<reactor::io>(_pool);
     }
 
     ll_failed_return(io->open(fd));
@@ -87,11 +97,6 @@ int reactor::open(int fd, unsigned flags)
     }
 
     ll_sys_failed_return_ex(epoll_ctl(_fd, EPOLL_CTL_ADD, fd, &event), io->deattch());
-    
-    /*
-    if (handler) {
-        ll_failed_return_ex(io->connect(handler), io->deattch());
-    }*/
     return ok;
 }
 
@@ -157,8 +162,11 @@ int reactor::loop(timeval tv)
     int nfds, flags;
     struct epoll_event *event;
     io *io;
-
-    nfds = epoll_wait(_fd, _events, _maxevents, time_precision_msec::timeval2value(tv));
+    int timeout = time_precision_msec::timeval2value(tv);
+    if (!timeout) {
+        return ok;
+    }
+    nfds = epoll_wait(_fd, _events, _maxevents, timeout);
 
     if (ll_unlikely(nfds == -1)) {
         if (ll_likely(errno == EINTR)) {
@@ -192,8 +200,6 @@ int reactor::loop(timeval tv)
         }
     }
     return ok;
-
-
 }
 
 }

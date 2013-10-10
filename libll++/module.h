@@ -27,7 +27,7 @@ class modules {
 public:
     typedef modules<_Args...> modules_t;
     typedef signal<int(_Args...), void> sig_init_t;
-    typedef signal<int(_Args...), void> sig_exit_t;
+    typedef signal<void(_Args...), void> sig_exit_t;
 
     sig_init_t sig_init;
     sig_exit_t sig_exit;
@@ -42,12 +42,12 @@ public:
             return sig_init.emit(std::forward<_Args>(args)...);
         }
     }
-    int exit(_Args&&...args) {
+    void exit(_Args&&...args) {
         if (ll::internal::module::__modules_reverse) {
-            return sig_exit.emit([](int r){ return 0; }, std::forward<_Args>(args)...);
+            return sig_exit.emit(std::forward<_Args>(args)...);
         }
         else {
-            return sig_exit.remit([](int r){ return 0; }, std::forward<_Args>(args)...);
+            return sig_exit.remit(std::forward<_Args>(args)...);
         }
     }
 

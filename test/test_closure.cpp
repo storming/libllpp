@@ -113,7 +113,11 @@ int main()
         c(100);
     } while (0);
 
+    /*
     ll::closure<void(int)> *c = ll::closure<void(int)>::_new(ll::malloc_allocator(), f, n);
+    c->apply(100);
+    */
+    cout << ll::has_static_new<ll::closure<void(int)>>::value << endl;
     return 0;
 }
 

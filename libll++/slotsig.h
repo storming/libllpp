@@ -10,11 +10,14 @@ template <typename signature, typename _Allocator, bool __once = false>
 class signal;
 
 /* normal signal with allocator */
-template <typename _Allocator, typename ..._Args>
-class signal<int(_Args...), _Allocator, false> {
+template <typename _Allocator, typename _R, typename ..._Args>
+class signal<_R(_Args...), _Allocator, false> {
 public:
+    static_assert(std::is_void<_R>::value || std::is_integral<_R>::value,
+        "signal result must is 'void' or integral.");
+
     typedef _Allocator allocator_t;
-    typedef closure<int(_Args...)> closure_t;
+    typedef closure<_R(_Args...)> closure_t;
 
     class slot {
         friend class signal;
@@ -67,9 +70,50 @@ public:
         }
     }
 
-    template <typename _F, typename ..._Args2>
-    int emit(_F f, _Args2&&...args) {
-        int n;
+    /* emit result is void */
+    template <typename _Ret = _R, typename ..._Args2>
+    typename std::enable_if<std::is_void<_Ret>::value, _Ret>::type
+    emit(_Args2&&...args) {
+        auto end = _impl._list.end();
+        for (auto it = _impl._list.begin(); it != end; ++it) {
+            it.pointer()->_closure->apply(std::forward<_Args2>(args)...);
+        }
+    }
+
+    /* emit result is boolean */
+    template <typename _F, typename _Ret = _R, typename ..._Args2>
+    typename std::enable_if<
+        std::is_same<typename std::remove_cv<_Ret>::type, bool>::value, 
+        _Ret>::type
+    emit(_F f, _Args2&&...args) {
+        auto end = _impl._list.end();
+        for (auto it = _impl._list.begin(); it != end; ++it) {
+            if (!f(it.pointer()->_closure->apply(std::forward<_Args2>(args)...))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    template <typename _Ret = _R, typename ..._Args2>
+    typename std::enable_if<
+        std::is_same<typename std::remove_cv<_Ret>::type, bool>::value, 
+        _Ret>::type
+    emit(_Args2&&...args) {
+        auto end = _impl._list.end();
+        for (auto it = _impl._list.begin(); it != end; ++it) {
+            it.pointer()->_closure->apply(std::forward<_Args2>(args)...);
+        }
+        return true;
+    }
+
+    /* emit else */
+    template <typename _F, typename _Ret = _R, typename ..._Args2>
+    typename std::enable_if<
+        !std::is_same<typename std::remove_cv<_Ret>::type, bool>::value && 
+        !std::is_void<_Ret>::value, _Ret>::type
+    emit(_F f, _Args2&&...args) {
+        _Ret n;
         auto end = _impl._list.end();
         for (auto it = _impl._list.begin(); it != end; ++it) {
             if ((n = f(it.pointer()->_closure->apply(std::forward<_Args2>(args)...)))) {
@@ -79,16 +123,60 @@ public:
         return 0;
     }
 
-    template <typename ..._Args2>
-    int emit(_Args2&&...args) {
-        return emit([](int r){ return r < 0 ? r : 0; }, std::forward<_Args2>(args)...);
+    template <typename _Ret = _R, typename ..._Args2>
+    typename std::enable_if<
+        !std::is_same<typename std::remove_cv<_Ret>::type, bool>::value && 
+        !std::is_void<_Ret>::value, _Ret>::type
+    emit(_Args2&&...args) {
+        return emit([](_R r){ return r < 0 ? r : 0; }, std::forward<_Args2>(args)...);
     }
 
-    template <typename _F, typename ..._Args2>
-    int remit(_F f, _Args2&&...args) {
-        int n;
+    /* remit result is void */
+    template <typename _Ret = _R, typename ..._Args2>
+    typename std::enable_if<std::is_void<_Ret>::value, _Ret>::type
+    remit(_Args2&&...args) {
         auto end = _impl._list.rend();
-        for (auto it = _impl._list.rbegin(); it != end; --it) {
+        for (auto it = _impl._list.rbegin(); it != end; ++it) {
+            it.pointer()->_closure->apply(std::forward<_Args2>(args)...);
+        }
+    }
+
+    /* remit result is boolean */
+    template <typename _F, typename _Ret = _R, typename ..._Args2>
+    typename std::enable_if<
+        std::is_same<typename std::remove_cv<_Ret>::type, bool>::value, 
+        _Ret>::type
+    remit(_F f, _Args2&&...args) {
+        auto end = _impl._list.rend();
+        for (auto it = _impl._list.rbegin(); it != end; ++it) {
+            if (!f(it.pointer()->_closure->apply(std::forward<_Args2>(args)...))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    template <typename _Ret = _R, typename ..._Args2>
+    typename std::enable_if<
+        std::is_same<typename std::remove_cv<_Ret>::type, bool>::value, 
+        _Ret>::type
+    remit(_Args2&&...args) {
+        auto end = _impl._list.rend();
+        for (auto it = _impl._list.rbegin(); it != end; ++it) {
+            it.pointer()->_closure->apply(std::forward<_Args2>(args)...);
+        }
+        return true;
+    }
+
+    /* remit else */
+    template <typename _F, typename _Ret = _R, typename ..._Args2>
+    typename std::enable_if<
+        !std::is_same<typename std::remove_cv<_Ret>::type, bool>::value && 
+        !std::is_void<_Ret>::value, _Ret>::type
+    remit(_F f, _Args2&&...args) {
+        _Ret n;
+        auto end = _impl._list.rend();
+        for (auto it = _impl._list.rbegin(); it != end; ++it) {
             if ((n = f(it.pointer()->_closure->apply(std::forward<_Args2>(args)...)))) {
                 return n;
             }
@@ -96,18 +184,24 @@ public:
         return 0;
     }
 
-    template <typename ..._Args2>
-    int remit(_Args2&&...args) {
-        return remit([](int r){ return r < 0 ? r : 0; }, std::forward<_Args2>(args)...);
+    template <typename _Ret = _R, typename ..._Args2>
+    typename std::enable_if<
+        !std::is_same<typename std::remove_cv<_Ret>::type, bool>::value && 
+        !std::is_void<_Ret>::value, _Ret>::type
+    remit(_Args2&&...args) {
+        return remit([](_R r){ return r < 0 ? r : 0; }, std::forward<_Args2>(args)...);
     }
 };
 
 /* normal signal without allocator */
-template <typename ..._Args>
-class signal<int(_Args...), void, false> {
+template <typename _R, typename ..._Args>
+class signal<_R(_Args...), void, false> {
 public:
+    static_assert(std::is_void<_R>::value || std::is_integral<_R>::value,
+        "signal result must is 'void' or integral.");
+
     typedef void allocator_t;
-    typedef closure<int(_Args...)> closure_t;
+    typedef closure<_R(_Args...)> closure_t;
 
     class slot {
         friend class signal;
@@ -153,9 +247,50 @@ public:
         _list.init();
     }
 
-    template <typename _F, typename ..._Args2>
-    int emit(_F f, _Args2&&...args) {
-        int n;
+    /* emit result is void */
+    template <typename _Ret = _R, typename ..._Args2>
+    typename std::enable_if<std::is_void<_Ret>::value, _Ret>::type
+    emit(_Args2&&...args) {
+        auto end = _list.end();
+        for (auto it = _list.begin(); it != end; ++it) {
+            it.pointer()->_closure->apply(std::forward<_Args2>(args)...);
+        }
+    }
+
+    /* emit result is boolean */
+    template <typename _F, typename _Ret = _R, typename ..._Args2>
+    typename std::enable_if<
+        std::is_same<typename std::remove_cv<_Ret>::type, bool>::value, 
+        _Ret>::type
+    emit(_F f, _Args2&&...args) {
+        auto end = _list.end();
+        for (auto it = _list.begin(); it != end; ++it) {
+            if (!f(it.pointer()->_closure->apply(std::forward<_Args2>(args)...))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    template <typename _Ret = _R, typename ..._Args2>
+    typename std::enable_if<
+        std::is_same<typename std::remove_cv<_Ret>::type, bool>::value, 
+        _Ret>::type
+    emit(_Args2&&...args) {
+        auto end = _list.end();
+        for (auto it = _list.begin(); it != end; ++it) {
+            it.pointer()->_closure->apply(std::forward<_Args2>(args)...);
+        }
+        return true;
+    }
+
+    /* emit else */
+    template <typename _F, typename _Ret = _R, typename ..._Args2>
+    typename std::enable_if<
+        !std::is_same<typename std::remove_cv<_Ret>::type, bool>::value && 
+        !std::is_void<_Ret>::value, _Ret>::type
+    emit(_F f, _Args2&&...args) {
+        _Ret n;
         auto end = _list.end();
         for (auto it = _list.begin(); it != end; ++it) {
             if ((n = f(it.pointer()->_closure->apply(std::forward<_Args2>(args)...)))) {
@@ -165,16 +300,60 @@ public:
         return 0;
     }
 
-    template <typename ..._Args2>
-    int emit(_Args2&&...args) {
-        return emit([](int r){ return r < 0 ? r : 0; }, std::forward<_Args2>(args)...);
+    template <typename _Ret = _R, typename ..._Args2>
+    typename std::enable_if<
+        !std::is_same<typename std::remove_cv<_Ret>::type, bool>::value && 
+        !std::is_void<_Ret>::value, _Ret>::type
+    emit(_Args2&&...args) {
+        return emit([](_R r){ return r < 0 ? r : 0; }, std::forward<_Args2>(args)...);
     }
 
-    template <typename _F, typename ..._Args2>
-    int remit(_F f, _Args2&&...args) {
-        int n;
+    /* remit result is void */
+    template <typename _Ret = _R, typename ..._Args2>
+    typename std::enable_if<std::is_void<_Ret>::value, _Ret>::type
+    remit(_Args2&&...args) {
         auto end = _list.rend();
-        for (auto it = _list.rbegin(); it != end; --it) {
+        for (auto it = _list.rbegin(); it != end; ++it) {
+            it.pointer()->_closure->apply(std::forward<_Args2>(args)...);
+        }
+    }
+
+    /* remit result is boolean */
+    template <typename _F, typename _Ret = _R, typename ..._Args2>
+    typename std::enable_if<
+        std::is_same<typename std::remove_cv<_Ret>::type, bool>::value, 
+        _Ret>::type
+    remit(_F f, _Args2&&...args) {
+        auto end = _list.rend();
+        for (auto it = _list.rbegin(); it != end; ++it) {
+            if (!f(it.pointer()->_closure->apply(std::forward<_Args2>(args)...))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    template <typename _Ret = _R, typename ..._Args2>
+    typename std::enable_if<
+        std::is_same<typename std::remove_cv<_Ret>::type, bool>::value, 
+        _Ret>::type
+    remit(_Args2&&...args) {
+        auto end = _list.rend();
+        for (auto it = _list.rbegin(); it != end; ++it) {
+            it.pointer()->_closure->apply(std::forward<_Args2>(args)...);
+        }
+        return true;
+    }
+
+    /* remit else */
+    template <typename _F, typename _Ret = _R, typename ..._Args2>
+    typename std::enable_if<
+        !std::is_same<typename std::remove_cv<_Ret>::type, bool>::value && 
+        !std::is_void<_Ret>::value, _Ret>::type
+    remit(_F f, _Args2&&...args) {
+        _Ret n;
+        auto end = _list.rend();
+        for (auto it = _list.rbegin(); it != end; ++it) {
             if ((n = f(it.pointer()->_closure->apply(std::forward<_Args2>(args)...)))) {
                 return n;
             }
@@ -182,18 +361,24 @@ public:
         return 0;
     }
 
-    template <typename ..._Args2>
-    int remit(_Args2&&...args) {
-        return remit([](int r){ return r < 0 ? r : 0; }, std::forward<_Args2>(args)...);
+    template <typename _Ret = _R, typename ..._Args2>
+    typename std::enable_if<
+        !std::is_same<typename std::remove_cv<_Ret>::type, bool>::value && 
+        !std::is_void<_Ret>::value, _Ret>::type
+    remit(_Args2&&...args) {
+        return remit([](_R r){ return r < 0 ? r : 0; }, std::forward<_Args2>(args)...);
     }
 };
 
 /* once signal with allocator */
-template <typename _Allocator, typename ..._Args>
-class signal<int(_Args...), _Allocator, true> {
+template <typename _Allocator, typename _R, typename ..._Args>
+class signal<_R(_Args...), _Allocator, true> {
 public:
+    static_assert(std::is_void<_R>::value || std::is_integral<_R>::value,
+        "signal result must is 'void' or integral.");
+
     typedef _Allocator allocator_t;
-    typedef closure<int(_Args...)> closure_t;
+    typedef closure<_R(_Args...)> closure_t;
 
 private:
     struct impl : public allocator_t {
@@ -216,7 +401,7 @@ public:
     template <typename _T, typename ..._Params>
     void connect(_T &&obj, _Params&&...args) noexcept {
         disconnect();
-        _impl._closure = closure_t::_new(_impl, std::forward<_T>(obj), std::forward<_Params>(args)...);
+        _impl._closure = _new<closure_t>(_impl, std::forward<_T>(obj), std::forward<_Params>(args)...);
     }
 
     bool connected() noexcept {
@@ -230,21 +415,52 @@ public:
         }
     }
 
-    template <typename ..._Args2>
-    int emit(_Args2&&...args) {
-        if (_impl._closure) {
-            return (*_impl._closure)(std::forward<_Args2>(args)...);
+    /* emit result is void */
+    template <typename _Ret = _R, typename ..._Args2>
+    typename std::enable_if<std::is_void<_Ret>::value, _Ret>::type
+    emit(_Args2&&...args) {
+        closure_t *c = _impl._closure;
+        if (c) {
+            c->apply(std::forward<_Args2>(args)...);
+        }
+    }
+
+    /* emit result is boolean */
+    template <typename _Ret = _R, typename ..._Args2>
+    typename std::enable_if<
+        std::is_same<typename std::remove_cv<_Ret>::type, bool>::value, 
+        _Ret>::type
+    emit(_Args2&&...args) {
+        closure_t *c = _impl._closure;
+        if (c) {
+            return c->apply(std::forward<_Args2>(args)...);
+        }
+        return true;
+    }
+
+    /* emit else */
+    template <typename _Ret = _R, typename ..._Args2>
+    typename std::enable_if<
+        !std::is_same<typename std::remove_cv<_Ret>::type, bool>::value && 
+        !std::is_void<_Ret>::value, _Ret>::type
+    emit(_Args2&&...args) {
+        closure_t *c = _impl._closure;
+        if (c) {
+            return c->apply(std::forward<_Args2>(args)...);
         }
         return 0;
     }
 };
 
 /* once signal without allocator */
-template <typename ..._Args>
-class signal<int(_Args...), void, true> {
+template <typename _R, typename ..._Args>
+class signal<_R(_Args...), void, true> {
 public:
+    static_assert(std::is_void<_R>::value || std::is_integral<_R>::value,
+        "signal result must is 'void' or integral.");
+
     typedef void allocator_t;
-    typedef closure<int(_Args...)> closure_t;
+    typedef closure<_R(_Args...)> closure_t;
 
 private:
     closure_t *_closure;
@@ -265,10 +481,35 @@ public:
         return tmp;
     }
 
-    template <typename ..._Args2>
-    int emit(_Args2&&...args) {
+    /* emit result is void */
+    template <typename _Ret = _R, typename ..._Args2>
+    typename std::enable_if<std::is_void<_Ret>::value, _Ret>::type
+    emit(_Args2&&...args) {
         if (_closure) {
-            return (*_closure)(std::forward<_Args2>(args)...);
+            _closure->apply(std::forward<_Args2>(args)...);
+        }
+    }
+
+    /* emit result is boolean */
+    template <typename _Ret = _R, typename ..._Args2>
+    typename std::enable_if<
+        std::is_same<typename std::remove_cv<_Ret>::type, bool>::value, 
+        _Ret>::type
+    emit(_Args2&&...args) {
+        if (_closure) {
+            return _closure->apply(std::forward<_Args2>(args)...);
+        }
+        return true;
+    }
+
+    /* emit else */
+    template <typename _Ret = _R, typename ..._Args2>
+    typename std::enable_if<
+        !std::is_same<typename std::remove_cv<_Ret>::type, bool>::value && 
+        !std::is_void<_Ret>::value, _Ret>::type
+    emit(_Args2&&...args) {
+        if (_closure) {
+            return _closure->apply(std::forward<_Args2>(args)...);
         }
         return 0;
     }

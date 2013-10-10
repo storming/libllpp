@@ -12,39 +12,39 @@ public:
         node *_right;
         node *_left;
 
-        node *parent() {
+        node *parent() noexcept {
             return (node*)(_parent_color & ~3);
         }
 
-        unsigned color() {
+        unsigned color() noexcept {
             return _parent_color & 1;
         }
 
-        bool is_red() {
+        bool is_red() noexcept {
             return !(_parent_color & 1);
         }
 
-        bool is_black() {
+        bool is_black() noexcept {
             return _parent_color & 1;
         }
 
-        void set_red() {
+        void set_red() noexcept {
             _parent_color &= ~1;
         }
 
-        void set_black() {
+        void set_black() noexcept {
             _parent_color |= 1;
         }
 
-        void set_parent(node *parent) {
+        void set_parent(node *parent) noexcept {
             _parent_color = (_parent_color & 3) | (unsigned long)parent;
         }
 
-        void set_color(int color) {
+        void set_color(int color) noexcept {
             _parent_color = (_parent_color & ~1) | color;
         }
 
-        node *next() {
+        node *next() noexcept {
             register node *parent, *node;
 
             if (this->parent() == this) {
@@ -73,7 +73,7 @@ public:
             return parent;
         }
 
-        node *prev() {
+        node *prev() noexcept {
             register node *parent, *node;
 
             if (this->parent() == node) {
@@ -103,26 +103,26 @@ protected:
     node *_root;
 
 private:
-    void rotate_left(register node *n);
-    void rotate_right(register node *n);
-    void erase_color(node *n, node *parent);
+    void rotate_left(register node *n) noexcept;
+    void rotate_right(register node *n) noexcept;
+    void erase_color(node *n, node *parent) noexcept;
 
 public:
     rbtree() : _root() {}
 
-    bool empty() {
+    bool empty() noexcept {
         return !_root;
     }
 
-    void truncate() {
+    void init() noexcept {
         _root = nullptr;
     }
 
-    node *root() {
+    node *root() noexcept {
         return _root;
     }
 
-    node *front() {
+    node *front() noexcept {
         register node *node = _root;
         if (node) {
             while (node->_left) {
@@ -132,7 +132,7 @@ public:
         return node;
     }
 
-    node *back() {
+    node *back() noexcept {
         register node *node = _root;
         if (node) {
             while (node->_right) {
@@ -142,15 +142,15 @@ public:
         return node;
     }
 
-    static void link(node *n, node *parent, node **link) {
+    static void link(node *n, node *parent, node **link) noexcept {
         n->_parent_color = (unsigned long )parent;
         n->_left = n->_right = nullptr;
         *link = n;
     }
 
-    void insert(node *n);
-    void remove(node *n);
-    void replace(node *victim, node *new_node);
+    void insert(node *n) noexcept;
+    void remove(node *n) noexcept;
+    void replace(node *victim, node *new_node) noexcept;
 
 };
 

@@ -1,6 +1,7 @@
 #ifndef __LIBLLPP_FILE_IO_H__
 #define __LIBLLPP_FILE_IO_H__
 
+#include <utility>
 #include "etc.h"
 
 #define ll_fd_valid(fd) ((fd) >= 0)
@@ -11,15 +12,33 @@ class file_io {
 private:
     int _fd;
 
+    void swap(file_io &x) {
+        std::swap(_fd, x._fd);
+    }
 public:
-    file_io() : _fd(-1) {}
-    file_io(int fd) : _fd(fd) {}
+    file_io() noexcept : _fd(-1) {}
+    file_io(int fd) noexcept : _fd(fd) {}
+    file_io(const file_io &x) : _fd(x._fd) {}
+    file_io(file_io &&x) {
+        swap(x);
+    }
+
     ~file_io() {
         if (ll_fd_valid(_fd)) {
-            close();
+            file_io::close(_fd);
         }
     }
     
+    file_io &operator=(const file_io &x) noexcept {
+        _fd = x._fd;
+        return *this;
+    }
+
+    file_io &operator=(file_io &&x) noexcept {
+        swap(x);
+        return *this;
+    }
+
     operator int() {
         return _fd;
     }
@@ -39,9 +58,11 @@ public:
         return ll_fd_valid(_fd);
     }
 
-    int close() {
-        ll_failed_return(file_io::close(_fd));
-        _fd = -1;
+    virtual int close() {
+        if (ll_fd_valid(_fd)) {
+            ll_failed_return(file_io::close(_fd));
+            _fd = -1;
+        }
         return ok;
     }
 

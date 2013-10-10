@@ -30,7 +30,6 @@ public:
     };
 
 private:
-
     static unsigned _default_maxfds;
     static unsigned _default_maxevents;
 
@@ -39,7 +38,10 @@ private:
     unsigned _maxevents;
     int _fd;
     io **_fds;
+    pool::stub *_stub;
     struct ::epoll_event *_events;
+
+    void dispose();
 public:
     reactor(pool *apool, unsigned maxfds = 0, unsigned maxevents = 0);
     ~reactor();
@@ -65,6 +67,13 @@ public:
     }
 
     int open(int fd, unsigned flags);
+
+    template <typename _F, typename ..._Args>
+    int open(int fd, unsigned flags, _F &&f, _Args&&...args) {
+        ll_failed_return(open(fd, flags));
+        _fds[fd]->connect(std::forward<_F>(f), std::forward<_Args>(args)...);
+    }
+
     int close(int fd, bool linger = false);
     int modify(int fd, int flags);
     int loop(timeval tv);

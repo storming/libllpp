@@ -3,7 +3,7 @@
 
 namespace ll {
 
-inline void rbtree::rotate_left(register rbtree::node *n) 
+inline void rbtree::rotate_left(register rbtree::node *n) noexcept 
 {
     register node *right = n->_right;
     register node *parent = n->parent();
@@ -30,7 +30,7 @@ inline void rbtree::rotate_left(register rbtree::node *n)
     n->set_parent(right);
 }
 
-inline void rbtree::rotate_right(register node *n)
+inline void rbtree::rotate_right(register node *n) noexcept 
 {
     register node *left = n->_left;
     register node *parent = n->parent();
@@ -56,7 +56,7 @@ inline void rbtree::rotate_right(register node *n)
     n->set_parent(left);
 }
 
-void rbtree::insert(node *n)
+void rbtree::insert(node *n) noexcept 
 {
     node *parent, *gparent;
 
@@ -116,7 +116,7 @@ void rbtree::insert(node *n)
     _root->set_black();
 }
 
-inline void rbtree::erase_color(node *n, node *parent)
+inline void rbtree::erase_color(node *n, node *parent) noexcept 
 {
     node *other;
 
@@ -195,7 +195,7 @@ inline void rbtree::erase_color(node *n, node *parent)
     }
 }
 
-void rbtree::remove(node *n) 
+void rbtree::remove(node *n) noexcept 
 {
     node *child, *parent;
     unsigned color;
@@ -275,7 +275,7 @@ color:
     }
 }
 
-void rbtree::replace(node *victim, node *new_node)
+void rbtree::replace(node *victim, node *new_node) noexcept 
 {
     node *parent = victim->parent();
 
