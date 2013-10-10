@@ -72,7 +72,24 @@ destroy函数，它调用class的析构函数。
 `_alloc`函数，它是allocator的argument forward的终端。在c++0x中，为了解决`&`、`const&`和pointer参数的完美传递引入了forward，参数总是这么
 forward来forward去，最后需要一个终端来确定。
 
-`_free`函数，一方面完成free的终端，另外一方面它通过sfinae判断allocator是否有free，如果没哟用空函数替代。
+`_free`函数，一方面完成free的终端，另外一方面它通过sfinae判断allocator是否有free，如果没有就用空函数替代。
+
+`_alloc`和`_free`以及construt.h文件中的所有函数一样，它们不只是针对分配器，也适用于内存分配器。这是一大堆具有sfinae能力的模板函数。
+只要具有基本语意，他们就能工作。
+
+	struct some_allocator {
+		void *alloc(size_t);
+		void free(void *p, size_t);
+	};
+
+`_new`和`_delete`是对等的，它们都是针对对象和allocator的。它们首先判断对象`_T`是否有`static _new`、`static _delete`，如果有就调用它。这有点
+类似c++的标准中对象的operator new，但是它不只是分配内存，它本质是个factory。然后，它判断allocator是否有`_new`成员函数，如果有它用
+allocator的`_new`去构造，这是个allocator级的factory。最后，它调用allocator的alloc分配内存，用placement new去构造类。
+
+`_delete`需要注意的一点是，它传入的参数是`void*`。对于虚析构我还是比较担心的，这强制使用者明确指定需要`_delete`的类型。当然，这并不影响
+虚析构的正常使用。
+
+
 
 ------------------------------------------------------------------------------------------------------------------------------------------
 ##2013-10-8 C++中内存操作的不适应以及对模板编程手法的幼稚
