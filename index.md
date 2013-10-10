@@ -16,6 +16,83 @@ libll++是我这段时间学习开发库，发布在：https://github.com/stormi
 2013-9-1
 
 ------------------------------------------------------------------------------------------------------------------------------------------
+##2013-10-10 当前版本的内存分配策略
+
+经过这么多天的折腾，内存分配策略基本定稿了。这东西肯定不会像标准new和delete那么简单，好在现在的实现也不是太复杂，至少
+从使用的角度来说。但是使用者需要了解每种分配器的特性，用的越多需要了解的就越多。
+
+libll++当前的内存策略分为：内存分配器、分配器和对象构造特例。
+
+内存分配器是分配内存的实体，这是个逻辑概念并不是真正的类，它可能是可实例化的类比如pool，也可能是一系列static 函数比如
+malloc和free。总之它的任务就是分配或者释放内存。
+
+分配器是对内存分配器的实例化封装。内存分配器的实现方式是多种多样的，有可实例化类也有malloc这样的静态函数组成的，它们的初始化
+参数也各不相同，分配内存和释放内存的参数也可能不太。比如函数free只有一个参数`void *`，但是libll++的free的默认语意是
+`void free(void *p, size_t)`。甚至在以后多线程的模式下，需要实现内存分配的每线程特例。因此，我们需要一个统一的封装来完成
+内存分配的统一接口。
+
+	struct some_allocator {
+		void *alloc(size_t);
+		void free(void *p, size_t);
+	};
+
+对于需要分配内存的类，要么它们自己选择一个最适合其特性的allocator，要么由模板参数传入一个allocator类型。他们本身或者其内嵌类会
+继承这个allocator来完成内存分配。所以这些allocator需要根据自己的特性提供必要的copy constructor或者move constructor，或者delete掉
+某些constructor。总之，常规分配内存情况下我们会使用分配器而不是内存分配器。
+
+对于由static构成的memory allocator，需要根据每种方案编写单独的allocator，比如malloc_allocator。对于可实例化的memory allocator，
+我们选择封装它的指针来完成allocator，这是个模板，allocator_bind。
+
+allocator还有2个可选函数，_new和_delete。在通用类里是没有的，它们主要是完成具体类集合的类工厂。
+
+当前，libll++有以下几种static allocator。
+
+malloc_allocator，它是对std::malloc和std::free的封装。简而言之，最后的选择。
+
+new_allocator，它的实现方式不是使用::malloc也不是::new。在以前的blog中，我曾经提到过我有在libll++中实现一个slub分配器的想法。
+尽管现在这不是当务之急，但是我还是留下了其相关伏笔。在当前的libll++为slub分配器预留了cache概念。当前的cache本质是个pool cache，
+它从pool的global实例中分配内存，使用sized bins array来记录free的内存。它分配的内存没有边界标志，它依赖libll++的默认free语意，
+也就是free的时候需要传入内存size。为了完成new的语意，new_allocator使用跟malloc一样的策略，在分配出的内存前面埋入一个size_t，
+用来保存内存的大小。
+
+mallocator，这是libll++的默认分配器。它也使用cache来完成内存分配，但是它不保存内存块大小。这个size需要程序员自己维护。把mallocator
+作为默认allocator，表达了一种态度，libll++的设计目标是为了效率。
+
+分配器必须传入size，这意味着一个问题：这种分配器不能准确的释放有虚析构的函数，析构可以虚，但是size没法虚。虚析构在比较深的class tree
+中是必须的，比如说UI系统。比如说一个window的子window，各种各样，它们使用虚函数和虚析构来完成逻辑组织。在高性能服务器应用中，类层次
+则是相对扁平，横向数量可能很大，但是层次不多。这时候虚析构只是浮云。libll++的默认分配器allocator是个typedef，如果需要强调虚析构，
+需要把它指向new_allocator或者malloc_allocator。
+
+最后，我们需要一个方式来构造类。libll++是个类库，它不可能去overload operator new和delete。它使用一系列的模板函数来完成这个工作。
+
+construct函数用于构造一个类，它本质就是placement new。
+
+destroy函数，它调用class的析构函数。
+
+_alloc函数，它是allocator的argument forward的终端。在c++0x中，为了解决&、const&和pointer参数的完美传递引入了forward，参数总是这么
+forward来forward去，最后需要一个终端来确定。
+
+_free函数，一方面完成free的终端，另外一方面它通过sfinae判断allocator是否有free，如果没哟用空函数替代。
+
+_alloc和_free以及construt.h文件中的所有函数一样，它们不只是针对分配器，也适用于内存分配器。这是一大堆具有sfinae能力的模板函数。
+只要具有基本语意，他们就能工作。
+
+	struct some_allocator {
+		void *alloc(size_t);
+		void free(void *p, size_t);
+	};
+
+_new和_delete是对等的，它们都是针对对象和allocator的。它们首先判断对象_T是否有static _new、static _delete，如果有就调用它。这有点
+类似c++的标准中对象的operator new，但是它不只是分配内存，它本质是个factory。然后，它判断allocator是否有_new成员函数，如果有它用
+allocator的_new去构造，这是个allocator级的factory。最后，它调用allocator的alloc分配内存，用placement new去构造类。
+
+_delete需要注意的一点是，它传入的参数是void*。对于虚析构我还是比较担心的，这强制使用者明确指定需要_delete的类型。当然，这并不影响
+虚析构的正常使用。
+
+
+今天是个令人高兴的日子，我的结婚纪念日。我每年只穿一次西装，每年的今天。写完今天的blog，我去庆祝了。:)
+
+------------------------------------------------------------------------------------------------------------------------------------------
 ##2013-10-8 C++中内存操作的不适应以及对模板编程手法的幼稚
 
 在上一篇博文中我简述了我对内存分配的认知历史，在写之前我估计会是很大篇幅，不过还是没想到会写这么长。每个部分都是简单的提几句就草草结束了，
