@@ -69,7 +69,7 @@ construct函数用于构造一个类，它本质就是placement new。
 
 destroy函数，它调用class的析构函数。
 
-_alloc函数，它是allocator的argument forward的终端。在c++0x中，为了解决&、const&和pointer参数的完美传递引入了forward，参数总是这么
+_alloc函数，它是allocator的argument forward的终端。在c++0x中，为了解决`&`、`const&`和pointer参数的完美传递引入了forward，参数总是这么
 forward来forward去，最后需要一个终端来确定。
 
 _free函数，一方面完成free的终端，另外一方面它通过sfinae判断allocator是否有free，如果没哟用空函数替代。
