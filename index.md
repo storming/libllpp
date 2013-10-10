@@ -86,7 +86,7 @@ _new和_delete是对等的，它们都是针对对象和allocator的。它们首
 类似c++的标准中对象的operator new，但是它不只是分配内存，它本质是个factory。然后，它判断allocator是否有_new成员函数，如果有它用
 allocator的_new去构造，这是个allocator级的factory。最后，它调用allocator的alloc分配内存，用placement new去构造类。
 
-_delete需要注意的一点是，它传入的参数是void*。对于虚析构我还是比较担心的，这强制使用者明确指定需要_delete的类型。当然，这并不影响
+_delete需要注意的一点是，它传入的参数是`void*`。对于虚析构我还是比较担心的，这强制使用者明确指定需要_delete的类型。当然，这并不影响
 虚析构的正常使用。
 
 
