@@ -26,8 +26,8 @@ template <typename ..._Args>
 class modules {
 public:
     typedef modules<_Args...> modules_t;
-    typedef signal<int(_Args...), void> sig_init_t;
-    typedef signal<void(_Args...), void> sig_exit_t;
+    typedef signal<int(_Args...), false, void> sig_init_t;
+    typedef signal<void(_Args...), false, void> sig_exit_t;
 
     sig_init_t sig_init;
     sig_exit_t sig_exit;
@@ -58,7 +58,7 @@ public:
     struct assember_init {
         template <typename ..._Params>
         static void assembe_init(modules_t &mm, _T &obj, _Params&&...params) {
-            static auto c = sig_init_t::closure_t::make(&_T::module_init, obj, std::forward<_Params>(params)...);
+            static auto c = make_closure<typename sig_init_t::signature>(&_T::module_init, obj, std::forward<_Params>(params)...);
             static typename sig_init_t::slot s(&c);
             mm.sig_init.connect(&s);
         }
@@ -75,7 +75,7 @@ public:
     struct assember_exit {
         template <typename ..._Params>
         static void assembe_exit(modules_t &mm, _T &obj, _Params&&...params) {
-            static auto c = sig_exit_t::closure_t::make(&_T::module_exit, obj, std::forward<_Params>(params)...);
+            static auto c = make_closure<typename sig_exit_t::signature>(&_T::module_exit, obj, std::forward<_Params>(params)...);
             static typename sig_exit_t::slot s(&c);
             mm.sig_exit.connect(&s);
         }

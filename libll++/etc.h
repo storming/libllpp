@@ -2,6 +2,8 @@
 #define __LIBLLPP_ETC_H__
 
 #include <cstddef>
+#include <type_traits>
+
 #include "rc.h"
 
 #define ll_is_p2aligned(x, a)   ((((uintptr_t)(v)) & ((uintptr_t)(a) - 1)) == 0)
@@ -70,6 +72,14 @@
     } while (0)
 
 namespace ll {
+
+template<typename A, typename = void>
+struct got_type : std::false_type {};
+
+template<typename A>
+struct got_type<A> : std::true_type {
+    typedef A type;
+};
 
 void terminate();
 void crit_error(const char *msg, int errnum = 0);

@@ -107,7 +107,7 @@ private:
 public:
     page_allocator();
     ~page_allocator();
-    page *alloc(size_t size);
+    page *alloc(size_t size = 1);
     void free(page *p);
     static page_allocator *global() {
         return _global;

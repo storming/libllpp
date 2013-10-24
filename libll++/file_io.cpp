@@ -8,7 +8,7 @@ namespace ll {
 
 int file_io::close(int fd) {
     while (1) {
-        if (ll_likely(ll_ok(close(fd)))) {
+        if (ll_likely(ll_ok(::close(fd)))) {
             return ok;
         }
 

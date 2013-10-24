@@ -7,6 +7,10 @@
 namespace ll {
 
 typedef long long timeval;
+
+class time_prec_msec;
+typedef time_prec_msec default_time_precision;
+
 class time {
 protected:
     timeval _value;
@@ -107,16 +111,16 @@ public:
 
 };
 
-struct time_precision_msec {
+struct time_prec_msec {
     static timeval adjust(timeval tv) {
         return tv / (time::usecs_of_second / time::msecs_of_second) * (time::usecs_of_second / time::msecs_of_second);
     }
 
-    static timeval timeval2value(timeval tv) {
+    static timeval to_precval(timeval tv) {
         return tv / (time::usecs_of_second / time::msecs_of_second);
     }
 
-    static timeval value2timeval(timeval tv) {
+    static timeval to_timeval(timeval tv) {
         return tv * (time::usecs_of_second / time::msecs_of_second);
     }
 

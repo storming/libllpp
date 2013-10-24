@@ -8,6 +8,17 @@ namespace ll {
 
 caches *caches::_instance = nullptr;
 
+caches::caches () noexcept
+{
+    cache *c;
+    pool *pool = pool::global();
+
+    c = _caches = (cache*)pool->alloc(max_index * sizeof(cache));
+    for (unsigned i = 0; i < max_index; i++, c++) {
+        new(c) cache((i + 1) << ll_align_order, pool_allocator(pool));
+    }
+};
+
 struct caches_module {
     int module_init() {
         static caches tmp;

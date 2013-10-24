@@ -3,6 +3,7 @@
 using std::cout;
 using std::endl;
 
+#include "libll++/memory.h"
 #include "libll++/map.h"
 
 struct foo {
@@ -17,33 +18,20 @@ struct foo {
     }
 };
 
-struct foo2 {
-
+struct foo2 : foo {
+    foo2(unsigned key) : foo(key) {}
+    foo2(unsigned key, unsigned flag) : foo(key, flag) {}
 };
 
-struct foo3 : foo2 {
-    virtual int kaka() {
-        return 0;
-    }
-    virtual int kaka2() {
-        return 0;
-    }
-};
-
-struct foo4 : foo3 {
-    int kaka() {
-        return 0;
-    }
-    int kaka2() {
-        return 0;
-    }
-};
 int main()
 {
-    ll_map(unsigned, foo, _entry) map;
-    for (unsigned i = 0; i < 10; i++) {
-        map.probe(i, nullptr, ll::pool::global());
+    ll_map(unsigned, foo2, _entry, ll::allocator) map;
+
+    for (unsigned i = 1; i < 10; i++) {
+        map.probe(i, nullptr);
     }
+
+    map.probe(0, nullptr);
 
     for (unsigned i = 0; i < 10; i++) {
         assert(map.get(i)->_key == i);
@@ -59,16 +47,16 @@ int main()
     }
 
     cout << "====" << endl;
-    map.insert<>(ll::_new<foo>(ll::pool::global(), 5, 1));
-    foo *elm9 = map.insert<false>(ll::_new<foo>(ll::pool::global(), 9, 1));
+    map.insert<>(ll::_new<foo2>(ll::pool::global(), 5, 1));
+    foo2 *elm9 = map.insert<false>(ll::_new<foo2>(ll::pool::global(), 9, 1));
 
     for (auto &obj : map) {
         cout << obj._key << " " << obj._flag << endl;
     }
 
     cout << "====" << endl;
-    map.replace(map.get(4), ll::_new<foo>(ll::pool::global(), 4, 1));
-    map.replace(ll::_new<foo>(ll::pool::global(), 6, 1));
+    map.replace(map.get(4), ll::_new<foo2>(ll::pool::global(), 4, 1));
+    map.replace(ll::_new<foo2>(ll::pool::global(), 6, 1));
     for (auto &obj : map) {
         cout << obj._key << " " << obj._flag << endl;
     }
@@ -84,9 +72,7 @@ int main()
     cout << map.front()->_key << endl;
     cout << map.back()->_key << endl;
 
-    cout << "====" << endl;
-    cout << sizeof(foo3) << endl;
-    cout << sizeof(foo4) << endl;
-
     return 0;
 }
+
+

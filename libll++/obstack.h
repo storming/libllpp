@@ -8,9 +8,8 @@
 namespace ll {
 
 class obstack {
-    friend class obstack_vbuff;
 private:
-    page_allocator *_allocator;
+    page_allocator *_pa;
     page *_chunk;
     char *_object_base;
     char *_next_free;
@@ -19,12 +18,15 @@ private:
 
     void newchunk(size_t length);
     void free(page *chunk, char *obj);
+    obstack() {}
 public:
-    obstack(page_allocator *allocator = nullptr);
-    ~obstack();
+    static obstack *_new(unsigned initsize = 0, page_allocator *pa = nullptr);
+    static void _delete(obstack *ob);
     
     int vsprintf(const char *fmt, va_list ap);
     int sprintf(const char *fmt, ...);
+
+    void clear();
 
     void *base() {
          return (void*)_object_base;

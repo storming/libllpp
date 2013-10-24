@@ -2,17 +2,26 @@
 #include <cstdlib>
 #include "libll++/timeval.h"
 #include "libll++/pool.h"
+#include "libll++/guard.h"
+#include "libll++/etc.h"
+
 using std::cout;
 using std::endl;
 
-void bye(ll::pool&) {
+void bye() {
     cout << "bye" << endl;
 }
 
+void test() {
+    //auto a = ll::make_guard();
+    cout << "bbbbbbbbbbbb" << endl;
+}
+
+#define COUNT 100000000
 int main()
 {
-    cout << ll::pool::global() << endl;
-
+    test();
+    return 0;
     do {
         ll::time_trace t;
         for (unsigned i = 0; i < 1000000; i++) {
@@ -21,7 +30,7 @@ int main()
         cout << t.check() << endl;
     } while (0);
 
-    ll::pool *pool = ll::pool::create(ll::pool::global());
+    ll::pool *pool = ll::_new<ll::pool>(ll::pool::global());
     pool->connect(bye);
 
     do {
@@ -34,11 +43,12 @@ int main()
 
     do {
         ll::time_trace t;
-        ll::pool::destroy(pool);
+        ll::_delete<ll::pool>(pool);
         cout << t.check() << endl;
     } while (0);
 
     char *s = ll::pool::global()->sprintf("hello pool %d\n", 100);
     cout << s;
+
     return 0;
 }

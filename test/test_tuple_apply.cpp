@@ -25,10 +25,8 @@ int main()
 {
     A a;
     std::tuple<int, int> t(3, 4);
-    ll::tuple_apply::back::apply(a, t, 1, 2);
-    ll::tuple_apply::front::apply(a, t, 1, 2);
-    ll::tuple_apply::apply(a, t, 1, 2);
-    ll::tuple_apply::apply<false>(a, t, 1, 2);
+    ll::tuple_apply(a, t, 1, 2);
+    ll::tuple_apply<false>(a, t, 1, 2);
 
     B b;
     unsigned count;
@@ -36,7 +34,7 @@ int main()
 
     count = COUNT;
     while (count--) {
-        ll::tuple_apply::apply(b, t, 1, 2);
+        ll::tuple_apply(b, t, 1, 2);
     }
     std::cout << tt.check() << std::endl;
 

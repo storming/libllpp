@@ -6,6 +6,7 @@
 
 namespace ll {
 class mallocator {
+    static mallocator _instance;
 public:
     static constexpr bool has_free = true;
     mallocator() noexcept {}
@@ -25,6 +26,10 @@ public:
 
     void free(void *p, size_t size) const noexcept {
         caches::get(size)->free(p);
+    }
+
+    static mallocator &instance() {
+        return _instance;
     }
 };
 

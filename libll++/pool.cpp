@@ -1,9 +1,8 @@
 #include <cassert>
-#include <new>
 
-#include "pool.h"
 #include "module.h"
 #include "printf.h"
+#include "pool.h"
 
 /* the following code refer to apr pool */
 
@@ -26,93 +25,41 @@
 
 namespace ll {
 
-pool *pool::_global = nullptr;
+pool_impl *pool_impl::_global = nullptr;
 
-/* managed */
-pool *pool::create(pool *parent, page_allocator *allocator)
+/* pool_impl */
+void pool_impl::init(page *pg, pool_impl *parent, page_allocator *pa) noexcept
 {
-    assert(parent);
+    _parent = parent;
+    _pa = pa;
+    _self = pg;
+    _active = pg;
+    _children.init();
+    _destroylist.init();
+    _use_count = 1;
 
-    if (!allocator) {
-        allocator = parent->_allocator;
+    pg->firstp = _firstp = (char *)this + ll_align_default(sizeof(pool_impl));
+    if (parent) {
+        parent->_children.push_front(this);
     }
-
-    pool *p;
-    page *pg = allocator->alloc(page_allocator::page_min_size);
-    pg->next = pg;
-    pg->ref = &pg->next;
-
-    p = (pool*)pg->firstp;
-    p->_parent = parent;
-    parent->_children.push_front(p);
-    p->_allocator = allocator;
-    p->_active = p->_self = pg;
-    p->_children.init();
-    p->_destroy_list.init();
-    pg->firstp = p->_firstp = (char *)p + ll_align_default(sizeof(pool));
-    return p;
 }
 
-/* unmanaged */
-pool *pool::create(page_allocator *allocator)
-{
-    assert(allocator);
-
-    pool *p;
-    page *pg = allocator->alloc(page_allocator::page_min_size);
-    pg->next = pg;
-    pg->ref = &pg->next;
-
-    p = (pool*)pg->firstp;
-    p->_parent = nullptr;
-    p->_allocator = allocator;
-    p->_active = p->_self = pg;
-    p->_children.init();
-    pg->firstp = p->_firstp = (char *)p + ll_align_default(sizeof(pool));
-    return p;
-}
-
-inline void pool::emit_destroy_callback()
+inline void pool_impl::emit_destroy() noexcept
 {
     stub *s;
-    while ((s = _destroy_list.pop_front())) {
-        s->_closure->apply(*this);
+    while ((s = _destroylist.pop_front())) {
+        s->_closure->apply();
     }
 }
 
-void pool::destroy(pool *p)
+void pool_impl::clear() noexcept
 {
-    pool *child;
-    while ((child = static_cast<pool*>(p->_children.front()))) {
-        destroy(child);
+    pool_impl *child;
+    while ((child = static_cast<pool_impl*>(_children.front()))) {
+        ll::_delete<pool_impl>(child);
     }
 
-    p->emit_destroy_callback();
-
-    if (p->_parent) {
-        pool_list_t::remove(p);
-    }
-
-    page_allocator *a = p->_allocator;
-    page *tmp;
-    page *pg = p->_self;
-    *pg->ref = nullptr;
-
-    while (pg) {
-        tmp = pg->next;
-        a->free(pg);
-        pg = tmp;
-    }
-}
-
-void pool::clear()
-{
-    pool *child;
-    while ((child = static_cast<pool*>(_children.front()))) {
-        destroy(child);
-    }
-
-    emit_destroy_callback();
+    emit_destroy();
 
     page *tmp;
     page *pg = _active = _self;
@@ -127,7 +74,7 @@ void pool::clear()
 
     while (pg) {
         tmp = pg->next;
-        _allocator->free(pg);
+        _pa->free(pg);
         pg = tmp;
     }
 
@@ -135,7 +82,7 @@ void pool::clear()
     _self->ref = &_self->next;
 }
 
-void *pool::alloc(page *active, size_t size)
+void *pool_impl::alloc(page *active, size_t size) noexcept
 {
     page *pg = active->next;
 
@@ -143,7 +90,7 @@ void *pool::alloc(page *active, size_t size)
         list_remove(pg);
     }
     else {
-        pg = _allocator->alloc(size);
+        pg = _pa->alloc(size);
     }
 
     pg->index = 0;
@@ -175,115 +122,140 @@ void *pool::alloc(page *active, size_t size)
     return p;
 }
 
-char *pool::strdup(const char *str, size_t n)
+/* _new managed impl */
+pool_impl *pool_impl::_new(pool_impl *parent, page_allocator *pa) noexcept
 {
-    char *res;
-    const char *end;
+    assert(parent);
 
-    if (str == NULL) {
-        return NULL;
+    if (!pa) {
+        pa = parent->_pa;
     }
-    end = (const char*)memchr(str, '\0', n);
-    if (end != NULL) {
-        n = end - str;
-    }
-    res = (char*)alloc(n + 1);
-    memcpy(res, str, n);
-    res[n] = '\0';
-    return res;
+
+    page *pg = pa->alloc(page_allocator::page_min_size);
+    pg->next = pg;
+    pg->ref = &pg->next;
+
+    pool_impl *impl = (pool_impl*)pg->firstp;
+    impl->init(pg, parent, pa);
+    return impl;
 }
 
-char *pool::strdup(const char *str)
+/* _new unmanaged impl */
+pool_impl *pool_impl::_new(page_allocator *pa) noexcept
 {
-    char *res;
-    size_t len;
+    assert(pa);
 
-    if (str == NULL) {
-        return NULL;
+    page *pg = pa->alloc(page_allocator::page_min_size);
+    pg->next = pg;
+    pg->ref = &pg->next;
+
+    pool_impl *impl = (pool_impl*)pg->firstp;
+    impl->init(pg, nullptr, pa);
+    return impl;
+}
+
+void pool_impl::_delete(pool_impl *impl) noexcept
+{
+    pool_impl *child;
+    while ((child = static_cast<pool_impl*>(impl->_children.front()))) {
+        ll::_delete<pool_impl>(child);
     }
-    len = strlen(str) + 1;
-    res = (char*)alloc(len);
-    memcpy(res, str, len);
-    return res;
+
+    impl->emit_destroy();
+
+    if (impl->_parent) {
+        decltype(_children)::remove(impl);
+    }
+
+    page_allocator *pa = impl->_pa;
+    page *tmp;
+    page *pg = impl->_self;
+    *pg->ref = nullptr;
+
+    while (pg) {
+        tmp = pg->next;
+        pa->free(pg);
+        pg = tmp;
+    }
 }
 
 #define SPRINTF_MIN_STRINGSIZE 32
-struct pool_vbuff : public printf_formatter::buff {
-    page *_node;
-    pool *_owner;
-    bool _got_a_new_node;
-    page *_freelist;
-
-    int flush() {
-        page *node, *active;
-        size_t cur_len, size;
-        char *strp;
-        size_t index;
-
-        active = _node;
-        strp = curpos;
-        cur_len = strp - active->firstp;
-        size = cur_len << 1;
-
-        /* Make sure that we don't try to use a block that has less
-         * than APR_PSPRINTF_MIN_STRINGSIZE bytes left in it.  This
-         * also catches the case where size == 0, which would result
-         * in reusing a block that can't even hold the NUL byte.
-         */
-        if (size < SPRINTF_MIN_STRINGSIZE)
-            size = SPRINTF_MIN_STRINGSIZE;
-
-        node = active->next;
-        if (!_got_a_new_node && size <= node->space()) {
-
-            list_remove(node);
-            list_insert(node, active);
-
-            node->index = 0;
-
-            _owner->_active = node;
-
-            index = (ll_align(active->space() + 1, page_allocator::page_boundary_size) - 
-                     page_allocator::page_boundary_size) >> page_allocator::page_boundary_index;
-
-            active->index = index;
-            node = active->next;
-            if (index < node->index) {
-                do {
-                    node = node->next;
-                }
-                while (index < node->index);
-
-                list_remove(active);
-                list_insert(active, node);
-            }
-
-            node = _owner->_active;
-        }
-        else {
-            node = _owner->_allocator->alloc(size);
-
-            if (_got_a_new_node) {
-                active->next = _freelist;
-                _freelist = active;
-            }
-
-            _got_a_new_node = true;
-        }
-
-        memcpy(node->firstp, active->firstp, cur_len);
-
-        _node = node;
-        curpos = node->firstp + cur_len;
-        endpos = node->endp - 1; /* Save a byte for NUL terminator */
-
-        return 0;
-    }
-};
-
-char *pool::vsprintf(const char *fmt, va_list ap)
+char *pool_impl::vsprintf(const char *fmt, va_list ap) noexcept
 {
-    pool_vbuff vb;
+    struct vbuff : public printf_formatter::buff {
+        page *_node;
+        pool_impl *_owner;
+        bool _got_a_new_node;
+        page *_freelist;
+
+        int flush() {
+            page *node, *active;
+            size_t cur_len, size;
+            char *strp;
+            size_t index;
+
+            active = _node;
+            strp = curpos;
+            cur_len = strp - active->firstp;
+            size = cur_len << 1;
+
+            /* Make sure that we don't try to use a block that has less
+             * than APR_PSPRINTF_MIN_STRINGSIZE bytes left in it.  This
+             * also catches the case where size == 0, which would result
+             * in reusing a block that can't even hold the NUL byte.
+             */
+            if (size < SPRINTF_MIN_STRINGSIZE)
+                size = SPRINTF_MIN_STRINGSIZE;
+
+            node = active->next;
+            if (!_got_a_new_node && size <= node->space()) {
+
+                list_remove(node);
+                list_insert(node, active);
+
+                node->index = 0;
+
+                _owner->_active = node;
+
+                index = (ll_align(active->space() + 1, page_allocator::page_boundary_size) - 
+                         page_allocator::page_boundary_size) >> page_allocator::page_boundary_index;
+
+                active->index = index;
+                node = active->next;
+                if (index < node->index) {
+                    do {
+                        node = node->next;
+                    }
+                    while (index < node->index);
+
+                    list_remove(active);
+                    list_insert(active, node);
+                }
+
+                node = _owner->_active;
+            }
+            else {
+                node = _owner->_pa->alloc(size);
+
+                if (_got_a_new_node) {
+                    active->next = _freelist;
+                    _freelist = active;
+                }
+
+                _got_a_new_node = true;
+            }
+
+            memcpy(node->firstp, active->firstp, cur_len);
+
+            _node = node;
+            curpos = node->firstp + cur_len;
+            endpos = node->endp - 1; /* Save a byte for NUL terminator */
+
+            return 0;
+        }
+    };
+
+    vbuff vb;
     char *strp;
     size_t size;
     page *active, *node;
@@ -321,7 +293,7 @@ char *pool::vsprintf(const char *fmt, va_list ap)
     page *tmp;
     while (node) {
         tmp = node->next;
-        _allocator->free(node);
+        _pa->free(node);
         node = tmp;
     }
 
@@ -362,21 +334,44 @@ char *pool::vsprintf(const char *fmt, va_list ap)
     return strp;
 }
 
-char *pool::sprintf(const char *fmt, ...)
+char *pool_impl::strdup(const char *str, size_t n) noexcept
 {
-    va_list ap;
-    va_start(ap, fmt);
-    char *strp = vsprintf(fmt, ap);
-    va_end(ap);
-    return strp;
+    char *res;
+    const char *end;
+
+    if (str == NULL) {
+        return NULL;
+    }
+    end = (const char*)memchr(str, '\0', n);
+    if (end != NULL) {
+        n = end - str;
+    }
+    res = (char*)alloc(n + 1);
+    memcpy(res, str, n);
+    res[n] = '\0';
+    return res;
+}
+
+char *pool_impl::strdup(const char *str) noexcept
+{
+    char *res;
+    size_t len;
+
+    if (str == NULL) {
+        return NULL;
+    }
+    len = strlen(str) + 1;
+    res = (char*)alloc(len);
+    memcpy(res, str, len);
+    return res;
 }
 
 struct pool_module {
     int module_init() {
-        pool::_global = pool::create(page_allocator::global());
+        pool_impl::_global = _new<pool_impl>(page_allocator::global());
         return 0;
     }
 };
 
 ll_module(pool_module);
-};
+}

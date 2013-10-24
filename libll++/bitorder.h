@@ -5,7 +5,8 @@ namespace ll {
 struct bitorder {
     static const unsigned char ordertab[];
 
-    static unsigned order(unsigned n) {
+    /* (1 << order(n)) >= n */
+    static unsigned order(unsigned long n) {
         register unsigned r = 0;
         register unsigned long m = n;
         while (m & (~0xff)) {

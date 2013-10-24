@@ -3,6 +3,8 @@
 
 namespace ll {
 
+mallocator mallocator::_instance;
+
 struct memory_module {
     int module_init() {
         return 0;

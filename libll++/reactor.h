@@ -3,7 +3,7 @@
 
 #include <cassert>
 
-#include "memory.h"
+#include "pool.h"
 #include "slotsig.h"
 #include "file_io.h"
 #include "timeval.h"
@@ -14,19 +14,24 @@ namespace ll {
 
 class reactor {
 public:
-    static constexpr unsigned poll_in    = (1 << 0);
-    static constexpr unsigned poll_out   = (1 << 1);
-    static constexpr unsigned poll_err   = (1 << 2);
-    static constexpr unsigned poll_hup   = (1 << 3);
-    static constexpr unsigned poll_open  = (1 << 4);
-    static constexpr unsigned poll_close = (1 << 5);
+    static constexpr unsigned poll_in           = (1 << 0);
+    static constexpr unsigned poll_out          = (1 << 1);
+    static constexpr unsigned poll_err          = (1 << 2);
+    static constexpr unsigned poll_hup          = (1 << 3);
+    static constexpr unsigned poll_open         = (1 << 4);
+    static constexpr unsigned poll_close        = (1 << 5);
 
-    class io : public file_io, public signal<int(io&, int), mallocator, true> {
+    static constexpr unsigned minfds            = 32;
+    static constexpr unsigned minevents         = 32;
+    static constexpr unsigned default_maxfds    = 1024;
+    static constexpr unsigned default_maxevents = 32;
+
+    class io : public file_io, public signal<int(io&, int), true> {
         friend class reactor;
     private:
         void deattch();
     public:
-        io() : file_io(), signal<int(io&, int), mallocator, true>() {}
+        io() : file_io(), signal<int(io&, int), true>() {}
     };
 
 private:
@@ -38,15 +43,14 @@ private:
     unsigned _maxevents;
     int _fd;
     io **_fds;
-    pool::stub *_stub;
+    void *_stub;
     struct ::epoll_event *_events;
 
     void dispose();
 public:
-    reactor(pool *apool, unsigned maxfds = 0, unsigned maxevents = 0);
-    ~reactor();
-
-    void set_default_params(unsigned maxfds, unsigned maxevents);
+    reactor(unsigned maxfds = 0, unsigned maxevents = 0) noexcept;
+    reactor(pool *pool, unsigned maxfds = 0, unsigned maxevents = 0) noexcept;
+    ~reactor() noexcept;
 
     io *get(int fd) {
         assert(ll_fd_valid(fd) && (unsigned)fd < _maxfds);
@@ -72,16 +76,14 @@ public:
     int open(int fd, unsigned flags, _F &&f, _Args&&...args) {
         ll_failed_return(open(fd, flags));
         _fds[fd]->connect(std::forward<_F>(f), std::forward<_Args>(args)...);
+        return ok;
     }
 
     int close(int fd, bool linger = false);
     int modify(int fd, int flags);
     int loop(timeval tv);
 
-    static reactor *instance() {
-        static reactor inst(pool::global());
-        return &inst;
-    }
+    static void set_default_params(unsigned maxfds, unsigned maxevents);
 };
 
 }

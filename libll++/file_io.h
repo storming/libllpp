@@ -12,17 +12,13 @@ class file_io {
 private:
     int _fd;
 
-    void swap(file_io &x) {
-        std::swap(_fd, x._fd);
-    }
 public:
     file_io() noexcept : _fd(-1) {}
     file_io(int fd) noexcept : _fd(fd) {}
-    file_io(const file_io &x) : _fd(x._fd) {}
-    file_io(file_io &&x) {
-        swap(x);
+    file_io(const file_io &x) noexcept : _fd(x._fd) {}
+    file_io(file_io &&x) noexcept : _fd(-1) {
+        std::swap(_fd, x._fd);
     }
-
     ~file_io() {
         if (ll_fd_valid(_fd)) {
             file_io::close(_fd);
@@ -35,7 +31,12 @@ public:
     }
 
     file_io &operator=(file_io &&x) noexcept {
-        swap(x);
+        std::swap(_fd, x._fd);
+        return *this;
+    }
+
+    file_io &operator=(int fd) noexcept {
+        _fd = fd;
         return *this;
     }
 
@@ -66,12 +67,16 @@ public:
         return ok;
     }
 
-    void attach(int fd) {
+    int attach(int fd) {
+        int tmp = _fd;
         _fd = fd;
+        return tmp;
     }
 
-    void deattch() {
+    int deattch() {
+        int tmp = _fd;
         _fd = -1;
+        return tmp;
     }
 
     static int close(int fd);

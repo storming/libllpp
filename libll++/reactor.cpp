@@ -8,11 +8,12 @@
 #include "reactor.h"
 #include "etc.h"
 #include "rc.h"
+#include "log.h"
 
 namespace ll {
 
-unsigned reactor::_default_maxfds = 1024;
-unsigned reactor::_default_maxevents = 32;
+unsigned reactor::_default_maxfds = default_maxfds;
+unsigned reactor::_default_maxevents = default_maxevents;
 
 inline void reactor::io::deattch() 
 {
@@ -20,10 +21,15 @@ inline void reactor::io::deattch()
     disconnect();
 }
 
-reactor::reactor(pool *apool, unsigned maxfds, unsigned maxevents) :
-    _pool(apool),
-    _maxfds(maxfds ? maxfds : _default_maxfds),
-    _maxevents(maxevents ? maxevents : _default_maxevents)
+reactor::reactor(unsigned maxfds, unsigned maxevents) noexcept
+    : reactor(pool::global(), maxfds, maxevents)
+{
+}
+
+reactor::reactor(pool *pool, unsigned maxfds, unsigned maxevents) noexcept :
+    _pool(pool),
+    _maxfds(maxfds ? (maxfds < minfds ? minfds : maxfds) : _default_maxfds),
+    _maxevents(maxevents ? (maxevents < minevents ? minevents : maxevents) : _default_maxevents)
 {
     _fds = (io**)_pool->calloc(sizeof(io*) * _maxfds);
     _events = (struct ::epoll_event*)_pool->alloc(sizeof(struct ::epoll_event) * _maxevents);
@@ -33,10 +39,10 @@ reactor::reactor(pool *apool, unsigned maxfds, unsigned maxevents) :
         crit_error("epoll_create", errno);
     }
 
-    _stub = _pool->connect([this](pool&){ dispose(); });
+    _stub = _pool->connect([this](){ dispose(); });
 }
 
-reactor::~reactor()
+reactor::~reactor() noexcept
 {
     if (_stub) {
         _pool->disconnect(_stub);
@@ -54,6 +60,12 @@ void reactor::dispose()
 void reactor::set_default_params(unsigned maxfds, unsigned maxevents)
 {
     assert(maxfds && maxevents);
+    if (maxfds < minfds) {
+        maxfds = minfds;
+    }
+    if (maxevents < minevents) {
+        maxevents = minevents;
+    }
     _default_maxfds = maxfds;
     _default_maxevents = maxevents;
 }
@@ -162,7 +174,7 @@ int reactor::loop(timeval tv)
     int nfds, flags;
     struct epoll_event *event;
     io *io;
-    int timeout = time_precision_msec::timeval2value(tv);
+    int timeout = time_prec_msec::to_precval(tv);
     if (!timeout) {
         return ok;
     }

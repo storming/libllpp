@@ -1,124 +1,118 @@
 #ifndef __LIBLLPP_CACHE_H__
 #define __LIBLLPP_CACHE_H__
 
-#include <new>
 #include "list.h"
 #include "pool.h"
 #include "etc.h"
 
 namespace ll {
 
-template <typename _Allocator = pool>
-class pool_cache {
-public:
-    typedef _Allocator allocator_t;
+template <typename _Allocator>
+class memory_cache {
 private:
+    typedef _Allocator allocator_type;
     struct node {
         slist_entry _entry;
     };
     unsigned _size;
-    allocator_t *_pool;
+    allocator_type _a;
     ll_list(node, _entry) _freelist;
 public:
-    pool_cache(unsigned size, allocator_t *p) : _size(ll_align_default(size)), _pool(p), _freelist() {
+    memory_cache(unsigned size, const allocator_type &a) noexcept : 
+        _size(ll_align_default(size)), 
+        _a(a), 
+        _freelist() {
         assert(size);
     }
 
-    unsigned size() {
+    memory_cache(const memory_cache &x) noexcept :
+        _size(x._size),
+        _a(x._a),
+        _freelist(x._freelist) {
+    }
+
+    memory_cache(memory_cache &&x) noexcept :
+        _a(std::move(x._a)),
+        _freelist(std::move(x._freelist)) {
+        std::swap(_size, x._size);
+    }
+
+    memory_cache &operator=(const memory_cache &x) noexcept {
+        memory_cache(x).swap(*this);
+        return *this;
+    }
+
+    memory_cache &operator=(memory_cache &&x) noexcept {
+        swap(x);
+        return *this;
+    }
+
+    void swap(memory_cache &x) noexcept {
+        std::swap(_size, x._size);
+        std::swap(_a, x._a);
+        std::swap(_freelist, x._freelist);
+    }
+
+    void clear() noexcept {
+        node *p;
+        while ((p = _freelist.pop_front())) {
+            _free(_a, p, _size);
+        }
+    }
+
+    unsigned size() noexcept {
         return _size;
     }
 
-    bool matching(unsigned size) {
+    bool operator==(unsigned size) noexcept {
         return _size == ll_align_default(size);
     }
 
-    template <typename _T>
-    bool matching() {
-        return _size == ll_align_default(sizeof(_T));
+    bool operator==(memory_cache &x) noexcept {
+        return _size == x._size;
     }
 
-    void *alloc() {
+    void *alloc() noexcept {
         void *p = (void*)_freelist.pop_front();
         if (!p) {
-            p = _pool->alloc(_size);
+            p = _a.alloc(_size);
         }
         return p;
     }
 
-    void *alloc(size_t size) {
-        assert(matching(size));
+    void *alloc(size_t size) noexcept {
+        assert(*this == size);
         return alloc();
     }
 
-    void free(void *p) {
+    void free(void *p) noexcept {
         _freelist.push_front((node*)p);
     }
 
-    void free(void *p, size_t size) {
-        assert(matching(size));
+    void free(void *p, size_t size) noexcept {
+        assert(*this == size);
         free(p);
     }
 };
 
-template <typename _Allocator = pool>
-class pool_caches {
-    friend class cache_module;
-public:
-    typedef _Allocator allocator_t;
-    typedef pool_cache<allocator_t> cache_t;
-private:
-    cache_t *_caches;
-    unsigned _max_index;
-public:
-    pool_caches(unsigned max_index, allocator_t *p) {
-        assert(p);
-        if (max_index < 1) {
-            max_index = 1;
-        }
-        _max_index = max_index;
+typedef memory_cache<pool_allocator> cache;
 
-        cache_t *c;
-        c = _caches = (cache_t*)p->alloc(_max_index * sizeof(cache_t));
-        for (unsigned i = 0; i < _max_index; i++, c++) {
-            new(c) cache_t((i + 1) << ll_align_order, p);
-        }
-    }
-
-    cache_t *get(unsigned size) {
-        assert(size);
-        unsigned index = (ll_align_default(size) >> ll_align_order) - 1;
-        assert(index < _max_index);
-        return _caches + index;
-    }
-
-    template <typename _T>
-    cache_t *get() {
-        return get(sizeof(_T));
-    }
-};
-
-class caches : protected pool_caches<pool> {
+class caches {
     friend class caches_module;
 private:
     static caches *_instance;
-    caches() : pool_caches<pool>(128, pool::global()) {}
+    cache *_caches;
+    caches() noexcept;
 public:
-    typedef pool_caches<pool>::cache_t cache_t;
-    static caches *instance() {
-        return _instance;
-    }
+    static constexpr unsigned max_index = 128;
 
-    static cache_t *get(unsigned size) {
-        return static_cast<pool_caches<pool>*>(_instance)->get(size);
-    }
-
-    template <typename _T>
-    static cache_t *get() {
-        return static_cast<pool_caches<pool>*>(_instance)->get<_T>();
+    static cache *get(unsigned size) noexcept {
+        assert(size);
+        unsigned index = (ll_align_default(size) >> ll_align_order) - 1;
+        assert(index < max_index);
+        return _instance->_caches + index;
     }
 };
-
-using cache = caches::cache_t;
 
 }
 

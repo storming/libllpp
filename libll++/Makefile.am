@@ -14,6 +14,9 @@ libll___la_SOURCES = 		\
 	rbtree.cpp		\
 	file_io.cpp		\
 	reactor.cpp		\
+	timer_manager.cpp	\
+	socket.cpp		\
+	config_file.cpp		\
 	module_end.cpp
 
-CXXFLAGS = -std=c++11 -O2 -Wall -D__LIBLLPP__
+CXXFLAGS = -std=c++11 -O2 -Wall -D__LIBLLPP__ -g

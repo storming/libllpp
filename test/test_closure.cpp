@@ -38,49 +38,49 @@ int main()
     foo *p = &f;
 
     do {
-        auto c = ll::closure<void(int)>::make(&foo2::dodo, p, n);
+        auto c = ll::make_closure<void(int)>(&foo2::dodo, p, n);
         c(100);
     } while (0);
 
     do {
-        auto c = ll::closure<void(int)>::make(func, n);
+        auto c = ll::make_closure<void(int)>(func, n);
         c(100);
     } while (0);
 
     do {
-        auto c = ll::closure<void(int)>::make(&func, n);
+        auto c = ll::make_closure<void(int)>(&func, n);
         c(100);
     } while (0);
 
     do {
         func_t fn = func;
-        auto c = ll::closure<void(int)>::make(fn, n);
+        auto c = ll::make_closure<void(int)>(fn, n);
         c(100);
     } while (0);
 
     do {
-        auto c = ll::closure<void(int)>::make(f, n);
+        auto c = ll::make_closure<void(int)>(f, n);
         c(100);
     } while (0);
 
     do {
-        auto c = ll::closure<void(int)>::make(&f, n);
+        auto c = ll::make_closure<void(int)>(&f, n);
         c(100);
     } while (0);
 
     do {
         foo *p = &f;
-        auto c = ll::closure<void(int)>::make(p, n);
+        auto c = ll::make_closure<void(int)>(p, n);
         c(100);
     } while (0);
 
     do {
-        auto c = ll::closure<void(int)>::make(foo(), n);
+        auto c = ll::make_closure<void(int)>(foo(), n);
         c(100);
     } while (0);
 
     do {
-        auto c = ll::closure<void(int)>::make([&](int m){
+        auto c = ll::make_closure<void(int)>([&](int m){
             cout << "lambda:" << n++ + m << endl;
         });
         c(100);
@@ -91,7 +91,7 @@ int main()
             cout << "lambda:" << n++ + m << endl;
         };
 
-        auto c = ll::closure<void(int)>::make(fn);
+        auto c = ll::make_closure<void(int)>(fn);
         c(100);
     } while (0);
 
@@ -100,7 +100,7 @@ int main()
             cout << "lambda:" << n++ + m << endl;
         };
 
-        auto c = ll::closure<void(int)>::make(&fn);
+        auto c = ll::make_closure<void(int)>(&fn);
         c(100);
     } while (0);
 
@@ -109,15 +109,10 @@ int main()
             cout << "lambda:" << n++ + m << endl;
         };
 
-        auto c = ll::closure<void(int)>::make(std::move(fn));
+        auto c = ll::make_closure<void(int)>(std::move(fn));
         c(100);
     } while (0);
 
-    /*
-    ll::closure<void(int)> *c = ll::closure<void(int)>::_new(ll::malloc_allocator(), f, n);
-    c->apply(100);
-    */
-    cout << ll::has_static_new<ll::closure<void(int)>>::value << endl;
     return 0;
 }
 

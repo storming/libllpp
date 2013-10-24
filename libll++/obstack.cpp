@@ -4,27 +4,56 @@
 
 namespace ll {
 
-obstack::obstack(page_allocator *allocator)
+obstack *obstack::_new(size_t initsize, page_allocator *pa) 
 {
-    if (!allocator) {
-        allocator = page_allocator::global();
+    if (!pa) {
+        pa = page_allocator::global();
     }
 
     page *chunk; 
-    int size = page_allocator::page_min_size;
-
-    chunk = allocator->alloc(size);
+    initsize += ll_align_default(sizeof(obstack));
+    chunk = pa->alloc(initsize);
     chunk->next = nullptr;
 
-    _allocator = allocator;
+    obstack *ob = (obstack*)chunk->firstp;
+    chunk->firstp += ll_align_default(sizeof(obstack));
+
+    ob->_pa = pa;
+    ob->_chunk = chunk;
+    ob->_next_free = ob->_object_base = chunk->firstp;
+    ob->_chunk_limit = chunk->endp;
+    ob->_maybe_empty_object = false;
+    return ob;
+}
+
+void obstack::_delete(obstack *ob)
+{
+    page_allocator *pa = ob->_pa;
+    page *chunk = ob->_chunk;
+    page *tmp;
+    while (chunk) {
+        tmp = chunk->next;
+        pa->free(chunk);
+        chunk = tmp;
+    }
+}
+
+void obstack::clear()
+{
+    page *chunk = _chunk;
+    page *tmp;
+    while (1) {
+        tmp = chunk->next;
+        if (!tmp) {
+            break;
+        }
+        _pa->free(chunk);
+        chunk = tmp;
+    }
     _chunk = chunk;
     _next_free = _object_base = chunk->firstp;
     _chunk_limit = chunk->endp;
     _maybe_empty_object = false;
-}
-
-obstack::~obstack() {
-    free(nullptr);
 }
 
 void obstack::newchunk(size_t length)
@@ -35,8 +64,8 @@ void obstack::newchunk(size_t length)
     register size_t obj_size = _next_free - _object_base;
     char *object_base;
 
-    new_size = obj_size + length;
-    new_chunk = _allocator->alloc(new_size);
+    new_size = obj_size + length + 128;
+    new_chunk = _pa->alloc(new_size);
 
     _chunk = new_chunk;
     new_chunk->next = old_chunk;
@@ -46,55 +75,53 @@ void obstack::newchunk(size_t length)
     object_base = new_chunk->firstp;
     memcpy(object_base, _object_base, obj_size);
 
-    if (!_maybe_empty_object && (_object_base == old_chunk->firstp)) {
+    if (!_maybe_empty_object && (_object_base == old_chunk->firstp) && old_chunk->next) {
         new_chunk->next = old_chunk->next;
-        _allocator->free(old_chunk);
+        _pa->free(old_chunk);
     }
 
     _object_base = object_base;
     _next_free = _object_base + obj_size;
     _maybe_empty_object = false;
-
 }
 
 void obstack::free(page *chunk, char *obj)
 {
     page *tmp;
-    do {
-        tmp = chunk->next;
-        _allocator->free(chunk);
+    while ((tmp = chunk->next) && (chunk->firstp >= obj || chunk->endp < obj)) {
+        _pa->free(chunk);
         chunk = tmp;
         /* If we switch chunks, we can't tell whether the new current
            chunk contains an empty object, so assume that it may.  */
-        _maybe_empty_object = 1;
-    } while (chunk && (chunk->firstp >= obj || chunk->endp < obj));
-
-    if (chunk) {
-        _object_base = _next_free = obj;
-        _chunk_limit = chunk->endp;
-        _chunk = chunk;
-    } else if (obj != 0) {
-        /* obj is not in any of the chunks! */
-        assert(0);
+        _maybe_empty_object = true;
     }
+
+    if (!tmp && (chunk->firstp > obj || chunk->endp < obj)) {
+        crit_error("obstack free failed, obj is not in any of the chunks!");
+    }
+
+    _object_base = _next_free = obj;
+    _chunk_limit = chunk->endp;
+    _chunk = chunk;
 }
 
-struct obstack_vbuff : public printf_formatter::buff {
-    obstack *_owner;
-
-    int flush() {
-        _owner->_next_free = curpos;
-        if (_owner->_next_free >= _owner->_chunk_limit) {
-            _owner->make_rome(128);
-            curpos = _owner->_next_free;
-            endpos = _owner->_chunk_limit;
-        }
-        return 0;
-    }
-};
 
 int obstack::vsprintf(const char *fmt, va_list ap)
 {
+    struct obstack_vbuff : public printf_formatter::buff {
+        obstack *_owner;
+
+        int flush() {
+            _owner->_next_free = curpos;
+            if (_owner->_next_free >= _owner->_chunk_limit) {
+                _owner->make_rome(128);
+                curpos = _owner->_next_free;
+                endpos = _owner->_chunk_limit;
+            }
+            return 0;
+        }
+    };
+
     obstack_vbuff buff;
 
     buff._owner = this;
