@@ -3,6 +3,7 @@
 
 #include <sys/time.h>
 #include <limits>
+#include <time.h>
 
 namespace ll {
 
@@ -110,6 +111,7 @@ public:
     }
 
 };
+
 
 struct time_prec_msec {
     static timeval adjust(timeval tv) {

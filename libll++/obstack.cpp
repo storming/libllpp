@@ -1,6 +1,8 @@
 #include <cassert>
 #include "obstack.h"
 #include "printf.h"
+#include <cstdio>
+#include <cstdlib>
 
 namespace ll {
 
@@ -106,7 +108,7 @@ void obstack::free(page *chunk, char *obj)
 }
 
 
-int obstack::vsprintf(const char *fmt, va_list ap)
+int obstack::vprint(const char *fmt, va_list ap)
 {
     struct obstack_vbuff : public printf_formatter::buff {
         obstack *_owner;
@@ -135,14 +137,6 @@ int obstack::vsprintf(const char *fmt, va_list ap)
     return n;
 }
 
-int obstack::sprintf(const char *fmt, ...)
-{
-    va_list ap;
-    va_start(ap, fmt);
-    int n = vsprintf(fmt, ap);
-    va_end(ap);
-    return n;
-}
 
 };
 

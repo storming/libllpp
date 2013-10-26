@@ -17,6 +17,7 @@ libll___la_SOURCES = 		\
 	timer_manager.cpp	\
 	socket.cpp		\
 	config_file.cpp		\
+	log.cpp			\
 	module_end.cpp
 
 CXXFLAGS = -std=c++11 -O2 -Wall -D__LIBLLPP__ -g

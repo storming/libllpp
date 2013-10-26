@@ -25,6 +25,9 @@ public:
     operator const char*() {
         return _text;
     }
+    const char* text() {
+        return _text;
+    }
 };
 
 class config_item_base {
@@ -34,8 +37,7 @@ public:
     config_text *name;
     config_text **values;
     unsigned value_count;
-    config_loc loc;
-    config_item_base() : name(), values(), value_count(), loc() {}
+    config_item_base() : name(), values(), value_count() {}
 
     operator unsigned() {
         return value_count;
@@ -86,7 +88,7 @@ public:
     config_doc();
     ~config_doc();
     void clear();
-    int load(const char *filename);
+    int load(const char *filename, char **msg = nullptr);
 };
 
 }

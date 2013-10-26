@@ -8,7 +8,7 @@
 namespace ll {
 
 class obstack {
-private:
+public:
     page_allocator *_pa;
     page *_chunk;
     char *_object_base;
@@ -23,8 +23,25 @@ public:
     static obstack *_new(unsigned initsize = 0, page_allocator *pa = nullptr);
     static void _delete(obstack *ob);
     
-    int vsprintf(const char *fmt, va_list ap);
-    int sprintf(const char *fmt, ...);
+    int vprint(const char *fmt, va_list ap);
+
+    int print(const char *fmt, ...) {
+        va_list ap;
+        va_start(ap, fmt);
+        return vprint(fmt, ap);
+    }
+
+    char *vprintf(const char *fmt, va_list ap) {
+        vprint(fmt, ap);
+        return (char*)finish();
+    }
+
+    char *printf(const char *fmt, ...) {
+        va_list ap;
+        va_start(ap, fmt);
+        vprint(fmt, ap);
+        return (char*)finish();
+    }
 
     void clear();
 

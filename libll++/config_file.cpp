@@ -2,13 +2,12 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <cstdio>
 
 #include "memory.h"
 #include "config_file.h"
 #include "file_io.h"
-#include "guard.h"
 
-#define BUFF_SIZE   4096
 namespace ll {
 
 struct config_file {
@@ -18,7 +17,7 @@ struct config_file {
     char *_endp;
     char *_p;
     page *_chunk;
-
+    struct stat stat;
 public:
     config_file() : _fd() {}
 
@@ -35,7 +34,10 @@ public:
 
     int open(const char *filename) {
         ll_sys_failed_return(_fd = ::open(filename, O_RDONLY));
-
+        if (ll_sys_failed(fstat(_fd, &stat))) {
+            _fd.close();
+            return fail;
+        }
         _chunk = page_allocator::global()->alloc();
         
         load();
@@ -82,6 +84,7 @@ struct config_loader {
         token_string = 256,
         token_block_end,
         token_include,
+        token_eof,
     };
     struct node {
         clist_entry entry;
@@ -97,9 +100,10 @@ struct config_loader {
     ll_list(config_file, _entry) _files;
     config_doc *_doc;
     config_item *_cur;
+    char *_msg;
 public:
     config_loader(obstack *pool, config_doc *doc) : 
-        _pool(pool), _list(), _recycle(), _files(), _doc(doc), _cur()
+        _pool(pool), _list(), _recycle(), _files(), _doc(doc), _cur(), _msg() 
     {
     }
 
@@ -125,29 +129,27 @@ public:
         return data;
     }
 
-    int open_file(const char *filename) {
-        for (auto& f : _files) {
-            if (strcmp(f._pos.file, filename) == 0) {
-                cout << "recursive include file." << endl;
-                return fail;
-            }
-        }
-        config_file *f = _new<config_file>(_pool);
-        if (ll_failed(f->open(filename))) {
-            cout << "open file failed." << endl;
-            return fail;
-        }
-
-        _files.push_front(f);
-        return ok;
-    }
-
     void getc() {
         _c = _files.front()->getc();
     }
 
     config_pos &getpos() {
         return _files.front()->_pos;
+    }
+
+    void error(const char *fmt, ...) {
+        va_list ap;
+        va_start(ap, fmt);
+        _pool->finish();
+        _msg = _pool->vprintf(fmt, ap);
+    }
+
+    void error_at(config_pos &pos, const char *fmt, ...) {
+        va_list ap;
+        va_start(ap, fmt);
+        _pool->finish();
+        _pool->print("%s:%d:%d: ", pos.file, pos.line, pos.column);
+        _msg = _pool->vprintf(fmt, ap);
     }
 
     int get_token() {
@@ -163,6 +165,7 @@ public:
                 } while (_c != '\n' && _c != EOF);
                 break;
             case EOF:
+                return token_eof;
             case '>':
             case '\n': {
                 int c = _c;
@@ -191,12 +194,12 @@ public:
                     switch (_c) {
                     case EOF:
                     case '\n':
-                        cout << "expected '\"'." << endl;
+                        error_at(getpos(), "expected '\"'.");
                         return fail;
                     case '\\':
                         getc();
                         if (_c != '\\' && _c != '"') {
-                            cout << "expected \\\\ or \\\"." << endl;
+                            error_at(getpos(), "expected \\\\ or \\\"");
                             return fail;
                         }
                         _pool->grow((char)_c);
@@ -250,12 +253,19 @@ public:
     }
 
     int read_item() {
+        config_file *f;
         int tk;
         config_item *item;
         ll_failed_return(tk = get_token());
 
         switch (tk) {
-        case EOF:
+        case token_eof:
+            f = _files.pop_front();
+            f->close();
+            if (!_files.empty()) {
+                getc();
+            }
+            return ok;
         case '\n':
             return ok;
         case token_string: 
@@ -284,7 +294,7 @@ public:
                     list_push(_t);
                     break;
                 default:
-                    cout << "expected string or new line or EOF." << endl;
+                    error_at(getpos(), "expected string or new line or EOF.");
                     return fail;
                 }
             }
@@ -294,7 +304,7 @@ public:
         {
             ll_failed_return(tk = get_token());
             if (tk != token_string) {
-                cout << "expected string." << endl;
+                error_at(getpos(), "expected string.");
                 return fail;
             }
             item = _new<config_item>(_pool, _cur);
@@ -305,7 +315,7 @@ public:
                 case '>':
                     ll_failed_return(tk = get_token());
                     if (tk != '\n' && tk != EOF) {
-                        cout << "expected new line or EOF." << endl;
+                        error_at(getpos(), "expected new line or EOF.");
                         return fail;
                     }
                     if (item->value_count) {
@@ -326,7 +336,7 @@ public:
                     list_push(_t);
                     break;
                 default:
-                    cout << "expected string or '>'." << endl;
+                    error_at(getpos(), "expected string or '>'.");
                     return fail;
                 }
             }
@@ -336,46 +346,62 @@ public:
         {
             ll_failed_return(tk = get_token());
             if (tk != token_string) {
-                cout << "expected string." << endl;
-                return fail;
-            }
-            ll_failed_return(tk = get_token());
-            if (tk != '>') {
-                cout << "expected '>'." << endl;
-                return fail;
-            }
-            ll_failed_return(tk = get_token());
-            if (tk != '\n' && tk != EOF) {
-                cout << "expected new line or EOF." << endl;
+                error_at(getpos(), "expected string.");
                 return fail;
             }
             if (_cur == nullptr || 
                 strcmp(*static_cast<config_item*>(_cur)->name, *_t) != 0) {
-                cout << "unmatching item block." << endl;
+                error_at(getpos(), "unmatching item block.");
                 return fail;
             }
-            cout << "oooooofffffffffffffff " << _cur->children.empty() << endl;
             _cur = _cur->_parent;
+
+            ll_failed_return(tk = get_token());
+            if (tk != '>') {
+                error_at(getpos(), "expected '>'.");
+                return fail;
+            }
+            ll_failed_return(tk = get_token());
+            if (tk != '\n' && tk != EOF) {
+                error_at(getpos(), "expected new line or EOF.");
+                return fail;
+            }
             return ok;
         }
         case token_include: 
         {
             ll_failed_return(tk = get_token());
             if (tk != token_string) {
-                cout << "expected string." << endl;
+                error_at(getpos(), "expected string.");
                 return fail;
             }
+
             ll_failed_return(tk = get_token());
             if (tk != '>') {
-                cout << "expected '>'." << endl;
+                error_at(getpos(), "expected '>'.");
                 return fail;
             }
             ll_failed_return(tk = get_token());
             if (tk != '\n' && tk != EOF) {
-                cout << "expected new line or EOF." << endl;
+                error_at(getpos(), "expected new line or EOF.");
                 return fail;
             }
-            ll_failed_return(open_file(*_t));
+
+            f = _new<config_file>(_pool);
+            
+            if (ll_failed(f->open(*_t))) {
+                error_at(_t->loc.start, "open file '%s' failed.", _t->text());
+                return fail;
+            }
+
+            for (auto& f2 : _files) {
+                if ((f->stat.st_dev == f2.stat.st_dev) && (f->stat.st_ino == f2.stat.st_ino)) {
+                    error_at(_t->loc.start, "recursive include file '%s'.", _t->text());
+                    return fail;
+                }
+            }
+            _files.push_front(f);
+            getc();
             return ok;
         }
         }
@@ -384,23 +410,21 @@ public:
     
     int load() {
         getc();
-        while (1) {
-            if (_c == EOF) {
-                config_file *f = _files.pop_front();
-                f->close();
-                if (_files.empty()) {
-                    break;
-                }
-            }
+        while (!_files.empty()) {
             ll_failed_return(read_item());
         }
         return ok;
     }
 
     int load(const char *filename) {
-        ll_failed_return(open_file(_pool->strdup(filename)));
+        config_file *f = _new<config_file>(_pool);
+        if (ll_failed(f->open(_pool->strdup(filename)))) {
+            error("open file '%s' failed.", filename);
+            return fail;
+        }
+        _files.push_front(f);
+
         int n = load();
-        config_file *f;
         while ((f = _files.pop_front())) {
             f->close();
         }
@@ -427,7 +451,7 @@ void config_doc::clear()
     }
 }
 
-int config_doc::load(const char *filename) 
+int config_doc::load(const char *filename, char **msg) 
 {
     if (!_pool) {
         _pool = _new<obstack>();
@@ -436,7 +460,11 @@ int config_doc::load(const char *filename)
     }
 
     config_loader loader(_pool, this);
-    return loader.load(filename);
+    int n = loader.load(filename);
+    if (ll_failed(n) && msg) {
+        *msg = loader._msg;
+    }
+    return n;
 }
 
 }
